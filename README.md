@@ -2,7 +2,7 @@
   <img src="https://github.com/CinemaMod/mcef/assets/30220598/938896d7-2589-49df-8f82-29266c64dfb7" alt="MCEF Logo" style="width:66px;height:66px;">
 </p>
 
-# MCEF (Minecraft Chromium Embedded Framework for LiquidBounce)
+# MCEF (Minecraft Chromium Embedded Framework for Nebula Client)
 
 A lightweight fork of MCEF designed specifically for integration with LiquidBounce. This barebone library provides essential Chromium web browser functionality for Minecraft.
 
