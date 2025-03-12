@@ -10,6 +10,14 @@
   "license": "LGPL 2.1",
   "icon": "icon.png",
   "environment": "*",
+  "entrypoints": {
+    "client": [
+      "com.nebulaclient.mcef.FabricMCEFClientMod"
+    ],
+    "main": [
+      "com.nebulaclient.mcef.FabricMCEFMod"
+    ]
+  },
   "mixins": [],
   "depends": {
     "fabricloader": ">=${loader_version}",

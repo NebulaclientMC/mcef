@@ -18,17 +18,13 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef.listeners;
+package com.nebulaclient.mcef.listeners;
 
 import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import okio.Buffer;
-import okio.BufferedSource;
-import okio.ForwardingSource;
-import okio.Okio;
-import okio.Source;
+import okio.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;

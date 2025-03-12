@@ -19,13 +19,13 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef.cef;
+package com.nebulaclient.mcef.cef;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.ccbluex.liquidbounce.mcef.MCEFPlatform;
-import net.ccbluex.liquidbounce.mcef.glfw.MCEFGlfwCursorHelper;
-import net.ccbluex.liquidbounce.mcef.listeners.MCEFCursorChangeListener;
+import com.nebulaclient.mcef.MCEFPlatform;
+import com.nebulaclient.mcef.glfw.MCEFGlfwCursorHelper;
+import com.nebulaclient.mcef.listeners.MCEFCursorChangeListener;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefBrowserOsr;
 import org.cef.callback.CefDragData;
@@ -39,7 +39,7 @@ import org.lwjgl.system.MemoryUtil;
 import java.awt.*;
 import java.nio.ByteBuffer;
 
-import static net.ccbluex.liquidbounce.mcef.MCEF.mc;
+import static com.nebulaclient.mcef.MCEF.mc;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 
@@ -296,7 +296,7 @@ public class MCEFBrowser extends CefBrowserOsr {
         this.mouseButton = 0;
     }
 
-    public void sendMouseWheel(int mouseX, int mouseY, double amount) {
+    public void sendMouseWheel(int mouseX, int mouseY, double amount, int i) {
         // macOS generally has a slow scroll speed that feels more natural with their magic mice / trackpads
         if (!isMacOs) {
             // This removes the feeling of "smooth scroll"

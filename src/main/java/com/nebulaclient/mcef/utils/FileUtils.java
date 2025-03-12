@@ -19,10 +19,10 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef.utils;
+package com.nebulaclient.mcef.utils;
 
-import net.ccbluex.liquidbounce.mcef.listeners.OkHttpProgressInterceptor;
-import net.ccbluex.liquidbounce.mcef.listeners.MCEFProgressListener;
+import com.nebulaclient.mcef.listeners.MCEFProgressListener;
+import com.nebulaclient.mcef.listeners.OkHttpProgressInterceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okio.Okio;

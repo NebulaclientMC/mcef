@@ -19,7 +19,7 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef;
+package com.nebulaclient.mcef;
 
 import java.io.File;
 import java.util.Arrays;

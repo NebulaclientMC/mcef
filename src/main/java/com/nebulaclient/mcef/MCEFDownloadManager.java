@@ -19,19 +19,21 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef;
+package com.nebulaclient.mcef;
 
-import net.ccbluex.liquidbounce.mcef.listeners.MCEFProgressListener;
+import com.nebulaclient.mcef.listeners.MCEFProgressListener;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static net.ccbluex.liquidbounce.mcef.utils.FileUtils.downloadFile;
-import static net.ccbluex.liquidbounce.mcef.utils.FileUtils.extractTarGz;
+import static com.nebulaclient.mcef.utils.FileUtils.downloadFile;
+import static com.nebulaclient.mcef.utils.FileUtils.extractTarGz;
 
 /**
  * A downloader and extraction tool for java-cef builds.
@@ -95,8 +97,17 @@ public class MCEFDownloadManager {
 
     private MCEFDownloadManager(String[] hosts, String javaCefCommitHash, MCEFPlatform platform, File directory) {
         this.hosts = hosts;
+        javaCefCommitHash = "06399a49d24f2c372668ccce26a15c533199ec9e";
+
         this.javaCefCommitHash = javaCefCommitHash;
         this.platform = platform;
+
+
+
+        System.out.println(directory.getAbsolutePath() + " :  " + javaCefCommitHash);
+
+
+
         this.commitDirectory = new File(directory, javaCefCommitHash);
         this.platformDirectory = new File(commitDirectory, platform.getNormalizedName());
     }

@@ -19,9 +19,10 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef.cef;
+package com.nebulaclient.mcef.cef;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.nebulaclient.mcef.MCEF;
 
 import java.nio.ByteBuffer;
 
@@ -62,6 +63,11 @@ public class MCEFRenderer {
             glDeleteTextures(textureID[0]);
             textureID[0] = 0;
         }
+    }
+
+
+    public void renderToTexture(){
+        MCEF.INSTANCE.getApp().getHandle().N_DoMessageLoopWork();
     }
 
     protected void onPaint(ByteBuffer buffer, int width, int height) {

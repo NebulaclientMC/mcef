@@ -19,10 +19,10 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef.cef;
+package com.nebulaclient.mcef.cef;
 
-import net.ccbluex.liquidbounce.mcef.MCEF;
-import net.ccbluex.liquidbounce.mcef.MCEFPlatform;
+import com.nebulaclient.mcef.MCEF;
+import com.nebulaclient.mcef.MCEFPlatform;
 import org.cef.CefApp;
 import org.cef.CefClient;
 import org.cef.CefSettings;

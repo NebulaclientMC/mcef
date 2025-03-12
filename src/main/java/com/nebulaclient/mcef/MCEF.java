@@ -19,12 +19,12 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef;
+package com.nebulaclient.mcef;
 
-import net.ccbluex.liquidbounce.mcef.cef.CefHelper;
-import net.ccbluex.liquidbounce.mcef.cef.MCEFApp;
-import net.ccbluex.liquidbounce.mcef.cef.MCEFBrowser;
-import net.ccbluex.liquidbounce.mcef.cef.MCEFClient;
+import com.nebulaclient.mcef.cef.CefHelper;
+import com.nebulaclient.mcef.cef.MCEFApp;
+import com.nebulaclient.mcef.cef.MCEFBrowser;
+import com.nebulaclient.mcef.cef.MCEFClient;
 import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

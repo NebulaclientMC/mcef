@@ -19,7 +19,7 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef.cef;
+package com.nebulaclient.mcef.cef;
 
 import org.cef.callback.CefDragData;
 import org.cef.misc.CefCursorType;

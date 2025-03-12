@@ -18,7 +18,7 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef.listeners;
+package com.nebulaclient.mcef.listeners;
 
 import org.jetbrains.annotations.NotNull;
 

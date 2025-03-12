@@ -19,21 +19,28 @@
  * USA
  */
 
-package net.ccbluex.liquidbounce.mcef.cef;
+package com.nebulaclient.mcef.glfw;
 
-import org.cef.CefApp;
+import org.cef.misc.CefCursorType;
+import org.lwjgl.glfw.GLFW;
 
-/**
- * A wrapper around {@link CefApp}
- */
-public class MCEFApp {
-    private final CefApp handle;
+import java.util.HashMap;
 
-    public MCEFApp(CefApp handle) {
-        this.handle = handle;
+public class MCEFGlfwCursorHelper {
+
+    private static final HashMap<CefCursorType, Long> CEF_TO_GLFW_CURSORS = new HashMap<>();
+
+    /**
+     * Helper method to get a GLFW cursor handle for the given {@link CefCursorType} cursor type
+     */
+    public static long getGLFWCursorHandle(CefCursorType cursorType) {
+        if (CEF_TO_GLFW_CURSORS.containsKey(cursorType)) {
+            return CEF_TO_GLFW_CURSORS.get(cursorType);
+        }
+
+        var glfwCursorHandle = GLFW.glfwCreateStandardCursor(cursorType.glfwId);
+        CEF_TO_GLFW_CURSORS.put(cursorType, glfwCursorHandle);
+        return glfwCursorHandle;
     }
 
-    public CefApp getHandle() {
-        return handle;
-    }
 }
