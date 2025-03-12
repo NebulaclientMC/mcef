@@ -32,7 +32,7 @@ public class FabricMCEFMod implements ModInitializer {
 
 
 
-        File parent = new File("com/nebulaclient/mcef");
+        File parent = new File("mcef");
         if(!parent.exists()) parent.mkdir();
 
 
