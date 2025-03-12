@@ -40,7 +40,8 @@ dependencies {
 After cloning this repo, you will need to clone the java-cef git submodule using the provided gradle task: `./gradlew cloneJcef`.
 
 ## Fork Hierarchy
-- [CCBlueX/mcef](https://github.com/CCBlueX/mcef) - Current LiquidBounce-optimized version
+- [NebulaclientMC/mcef](https://github.com/NebulaclientMC/mcef) - Current Nebula Client optimized version
+- [CCBlueX/mcef](https://github.com/CCBlueX/mcef)
 - [CinemaMod/mcef](https://github.com/CinemaMod/mcef)
 - [montoyo/mcef](https://github.com/montoyo/mcef)
 
