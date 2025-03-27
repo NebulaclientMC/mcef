@@ -43,9 +43,7 @@ public class MCEFExampleMod {
         // Check if our key was pressed
         if (KEY_MAPPING.isPressed() && !(minecraft.currentScreen instanceof ExampleScreen)) {
             //Display the web browser UI.
-            minecraft.setScreen(new ExampleScreen(
-                    Text.literal("Example Screen")
-            ));
+            minecraft.setScreen(new ExampleScreen());
         }
     }
 }

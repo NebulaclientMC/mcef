@@ -35,21 +35,22 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.TriState;
 import net.minecraft.util.Util;
 
+import java.util.UUID;
 import java.util.function.Function;
 
 import static com.nebulaclient.mcef.utils.ExtendedRenderLayers.JCEF_BLEND;
 
 
 public class ExampleScreen extends Screen {
-    private static final int BROWSER_DRAW_OFFSET = 20;
+    private static final int drawOffset = 0;
 
     MinecraftClient minecraft = MinecraftClient.getInstance();
 
     private MCEFBrowser browser;
     private Identifier texture;
 
-    protected ExampleScreen(Text component) {
-        super(component);
+    protected ExampleScreen() {
+        super(Text.of("MCEF/"+UUID.randomUUID().toString().split("-")[0]));
     }
 
     @Override
@@ -76,19 +77,19 @@ public class ExampleScreen extends Screen {
     }
 
     private int mouseX(double x) {
-        return (int) ((x - BROWSER_DRAW_OFFSET) * minecraft.getWindow().getScaleFactor());
+        return (int) ((x - drawOffset) * minecraft.getWindow().getScaleFactor());
     }
 
     private int mouseY(double y) {
-        return (int) ((y - BROWSER_DRAW_OFFSET) * minecraft.getWindow().getScaleFactor());
+        return (int) ((y - drawOffset) * minecraft.getWindow().getScaleFactor());
     }
 
     private int scaleX(double x) {
-        return (int) ((x - BROWSER_DRAW_OFFSET * 2) * minecraft.getWindow().getScaleFactor());
+        return (int) ((x - drawOffset * 2) * minecraft.getWindow().getScaleFactor());
     }
 
     private int scaleY(double y) {
-        return (int) ((y - BROWSER_DRAW_OFFSET * 2) * minecraft.getWindow().getScaleFactor());
+        return (int) ((y - drawOffset * 2) * minecraft.getWindow().getScaleFactor());
     }
 
     private void resizeBrowser() {
@@ -116,8 +117,8 @@ public class ExampleScreen extends Screen {
         browser.getRenderer().renderToTexture();
         RenderSystem.disableDepthTest();
         RenderSystem.enableBlend();
-        guiGraphics.drawTexture(BLURRED_TEXTURE_LAYER, texture, 20, 20, 0f, 0f, width - 40,
-               height - 40, width - 40,height - 40);
+        guiGraphics.drawTexture(BLURRED_TEXTURE_LAYER, texture, 0, 0, 0f, 0f, width - 0,
+               height - 0, width - 0,height - 0);
         RenderSystem.enableDepthTest();
     }
 

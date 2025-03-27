@@ -26,8 +26,10 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.nebulaclient.mcef.MCEFPlatform;
 import com.nebulaclient.mcef.glfw.MCEFGlfwCursorHelper;
 import com.nebulaclient.mcef.listeners.MCEFCursorChangeListener;
+import com.nebulaclient.mcef.listeners.MCEFMessageRouter;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefBrowserOsr;
+import org.cef.browser.CefMessageRouter;
 import org.cef.callback.CefDragData;
 import org.cef.event.CefKeyEvent;
 import org.cef.event.CefMouseEvent;
@@ -88,9 +90,9 @@ public class MCEFBrowser extends CefBrowserOsr {
 
     public MCEFBrowser(MCEFClient client, String url, boolean transparent, int frameRate) {
         super(client.getHandle(), url, transparent, null, new MCEFBrowserSettings(frameRate));
+        this.getClient().addMessageRouter(CefMessageRouter.create(new MCEFMessageRouter()));
         renderer = new MCEFRenderer(transparent);
         cursorChangeListener = (cefCursorID) -> setCursor(CefCursorType.fromId(cefCursorID));
-
         RenderSystem.recordRenderCall(renderer::initialize);
     }
 
