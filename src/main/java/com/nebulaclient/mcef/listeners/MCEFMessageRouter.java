@@ -1,5 +1,7 @@
 package com.nebulaclient.mcef.listeners;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nebulaclient.mcef.messaging.QueryMessage;
 import com.nebulaclient.mcef.messaging.QueryMessageData;
 import com.nebulaclient.mcef.messaging.QueryMessageManager;
@@ -13,23 +15,37 @@ import javax.management.Query;
 
 public class MCEFMessageRouter implements CefMessageRouterHandler {
 
-    //TODO: get the actuall queryId / id under which the message is registered from the request String, which should be a JSON object
     @Override
     public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request, boolean persistent, CefQueryCallback callback) {
-        QueryMessage message = QueryMessageManager.getMessage(request);
-        QueryMessageResult result = message.onMessage(new QueryMessageData(request));
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode jsonNode = objectMapper.readTree(request);
 
-        callback.success(result.response);
-        callback.failure(0,result.response);
+            String extractedQueryId = jsonNode.has("queryId") ? jsonNode.get("queryId").asText() : null;
 
+            if (extractedQueryId == null) {
+                callback.failure(1, "queryId is missing");
+                return false;
+            }
 
-        if(result.state == QueryMessageResult.QueryResultState.FAILTURE){
+            QueryMessage message = QueryMessageManager.getMessage(extractedQueryId);
+            QueryMessageResult result = message.onMessage(new QueryMessageData(request));
+
+            if (result.state == QueryMessageResult.QueryResultState.FAILTURE) {
+                callback.failure(0, result.response);
+                return false;
+            } else if (result.state == QueryMessageResult.QueryResultState.SUCCESS) {
+                callback.success(result.response);
+                return true;
+            }else{
+                return true;
+            }
+        } catch (Exception e) {
+            callback.failure(2, "Invalid JSON format");
             return false;
-        }else {
-            return true;
         }
-
     }
+
 
     @Override
     public void onQueryCanceled(CefBrowser browser, CefFrame frame, long queryId) {
