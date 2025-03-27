@@ -12,6 +12,8 @@ import org.cef.handler.CefMessageRouterHandler;
 import javax.management.Query;
 
 public class MCEFMessageRouter implements CefMessageRouterHandler {
+
+    //TODO: get the actuall queryId / id under which the message is registered from the request String, which should be a JSON object
     @Override
     public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request, boolean persistent, CefQueryCallback callback) {
         QueryMessage message = QueryMessageManager.getMessage(request);

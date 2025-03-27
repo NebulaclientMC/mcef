@@ -20,10 +20,11 @@
 
 package com.nebulaclient.mcef;
 
+import com.nebulaclient.mcef.messaging.QueryMessageManager;
+import com.nebulaclient.mcef.examples.messaging.ExampleMessage;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
-import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 public class MCEFExampleMod {
@@ -37,6 +38,7 @@ public class MCEFExampleMod {
     public MCEFExampleMod() {
 
         ClientTickEvents.START_CLIENT_TICK.register((client) -> onTick());
+        QueryMessageManager.registerMessage(new ExampleMessage());
     }
 
     public void onTick() {

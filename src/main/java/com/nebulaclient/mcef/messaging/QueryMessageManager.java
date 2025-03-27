@@ -3,9 +3,14 @@ package com.nebulaclient.mcef.messaging;
 import java.util.ArrayList;
 import java.util.Objects;
 
+
+/***
+ * @apiNote Receive messages from JavaScript. Create a new QueryMessage and register it
+ * @see QueryMessage
+ */
 public class QueryMessageManager {
 
-    private static ArrayList<QueryMessage> messages;
+    private static final ArrayList<QueryMessage> messages = new ArrayList<QueryMessage>();
 
     public static void registerMessage(QueryMessage message) {
         for (QueryMessage m : messages) {
