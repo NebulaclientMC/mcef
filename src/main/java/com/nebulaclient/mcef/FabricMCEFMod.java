@@ -20,7 +20,6 @@
 
 package com.nebulaclient.mcef;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.api.ModInitializer;
 
 import java.io.File;
@@ -55,7 +54,7 @@ public class FabricMCEFMod implements ModInitializer {
             throw new RuntimeException(e);
         }
 
-        RenderSystem.assertOnRenderThread();
+
         MCEF.INSTANCE.initialize();
 
         // MCEF server-side does nothing

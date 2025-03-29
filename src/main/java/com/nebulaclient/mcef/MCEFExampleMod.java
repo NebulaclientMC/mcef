@@ -20,10 +20,10 @@
 
 package com.nebulaclient.mcef;
 
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.text.Text;
+import org.lwjgl.Sys;
 import org.lwjgl.glfw.GLFW;
 
 public class MCEFExampleMod {
@@ -36,7 +36,7 @@ public class MCEFExampleMod {
 
     public MCEFExampleMod() {
 
-        ClientTickEvents.START_CLIENT_TICK.register((client) -> onTick());
+        //ClientTickEvents.START_CLIENT_TICK.register((client) -> onTick());
     }
 
     public void onTick() {
@@ -44,7 +44,7 @@ public class MCEFExampleMod {
         if (KEY_MAPPING.isPressed() && !(minecraft.currentScreen instanceof ExampleScreen)) {
             //Display the web browser UI.
             minecraft.setScreen(new ExampleScreen(
-                    Text.literal("Example Screen")
+
             ));
         }
     }

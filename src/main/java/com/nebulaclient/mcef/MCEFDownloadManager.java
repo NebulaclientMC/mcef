@@ -298,7 +298,7 @@ public class MCEFDownloadManager {
             }
 
             // Delete existing checksum file if it doesn't match the new checksum
-            FileUtils.delete(checksumFile);
+            FileUtils.deleteQuietly(checksumFile);
         }
 
         FileUtils.moveFile(tempChecksumFile, checksumFile);

@@ -7,15 +7,24 @@ public class Logger {
         System.out.println(message);
     }
 
-    public void error(String s, IOException e) {
+    public void error(String s, Object e) {
         System.err.println(s);
     }
 
     public void info(String s, Object osArch) {
         System.out.println(s + " " + osArch);
     }
+    public void info(String s, Object... osArch) {
+        System.out.println(s + " " + osArch);
+    }
 
-    public void error(String s) {
+
+    public void error(Object... s) {
         System.err.println(s);
     }
+
+    public void warn(Object s) {
+    } public void warn(Object s,Object e) {
+    }
+
 }

@@ -22,10 +22,10 @@
 package com.nebulaclient.mcef.cef;
 
 import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.nebulaclient.mcef.MCEFPlatform;
 import com.nebulaclient.mcef.glfw.MCEFGlfwCursorHelper;
 import com.nebulaclient.mcef.listeners.MCEFCursorChangeListener;
+import net.minecraft.client.MinecraftClient;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefBrowserOsr;
 import org.cef.callback.CefDragData;
@@ -34,7 +34,11 @@ import org.cef.event.CefMouseEvent;
 import org.cef.event.CefMouseWheelEvent;
 import org.cef.misc.CefCursorType;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.GL;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryUtil;
+
 
 import java.awt.*;
 import java.nio.ByteBuffer;
@@ -91,7 +95,7 @@ public class MCEFBrowser extends CefBrowserOsr {
         renderer = new MCEFRenderer(transparent);
         cursorChangeListener = (cefCursorID) -> setCursor(CefCursorType.fromId(cefCursorID));
 
-        RenderSystem.recordRenderCall(renderer::initialize);
+        //RenderSystem.recordRenderCall(renderer::initialize);
     }
 
     public MCEFRenderer getRenderer() {
@@ -144,41 +148,41 @@ public class MCEFBrowser extends CefBrowserOsr {
                 renderer.onPaint(buffer, width, height);
             } else {
                 if (renderer.getTextureID() == 0) return;
-                RenderSystem.bindTexture(renderer.getTextureID());
-                RenderSystem.pixelStore(GL_UNPACK_ROW_LENGTH, width);
+                GlStateManager.bindTexture(renderer.getTextureID());
+                GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
                 for (Rectangle dirtyRect : dirtyRects) {
-                    GlStateManager._pixelStore(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
-                    GlStateManager._pixelStore(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
+                    GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
+                    GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
                     renderer.onPaint(buffer, dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
                 }
                 if ((popupDrawn || showPopup) && popupSize != null) {
                     // interpret where the popup was as a dirty rect
                     if (!showPopup) {
                         // if the popup is not visible, just draw the contents of the buffer
-                        GlStateManager._pixelStore(GL_UNPACK_SKIP_PIXELS, popupSize.width);
-                        GlStateManager._pixelStore(GL_UNPACK_SKIP_ROWS, popupSize.height);
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, popupSize.width);
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, popupSize.height);
                         renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
                         popupGraphics = null;
                         popupSize = null;
                     } else if (popupDrawn) {
                         // else, a use copy of the popup graphics, as it needs to remain visible
                         // and for some reason that I do not for the life of me understand, chromium does not seem to keep this data in memory outside of the paint loop, meaning it has to be copied around, which wastes performance
-                        RenderSystem.pixelStore(GL_UNPACK_ROW_LENGTH, popupSize.width);
-                        GlStateManager._pixelStore(GL_UNPACK_SKIP_PIXELS, 0);
-                        GlStateManager._pixelStore(GL_UNPACK_SKIP_ROWS, 0);
+                        GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
                         renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
                     }
                 }
             }
         } else {
             if (renderer.getTextureID() == 0) return;
-            RenderSystem.bindTexture(renderer.getTextureID());
+            GlStateManager.bindTexture(renderer.getTextureID());
             int start = buffer.capacity();
             int end = 0;
             for (Rectangle dirtyRect : dirtyRects) {
-                RenderSystem.pixelStore(GL_UNPACK_ROW_LENGTH, popupSize.width);
-                GlStateManager._pixelStore(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
-                GlStateManager._pixelStore(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
+                GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
+                GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
+                GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
                 renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
 
                 int rectStart = (dirtyRect.x + ((dirtyRect.y) * popupSize.width)) << 2;
@@ -362,7 +366,7 @@ public class MCEFBrowser extends CefBrowserOsr {
 
     @Override
     protected void finalize() throws Throwable {
-        RenderSystem.recordRenderCall(renderer::cleanup);
+        //RenderSystem.recordRenderCall(renderer::cleanup);
         super.finalize();
     }
 
@@ -375,12 +379,12 @@ public class MCEFBrowser extends CefBrowserOsr {
     }
 
     public void setCursor(CefCursorType cursorType) {
-        var windowHandle = mc.getWindow().getHandle();
+        var windowHandle = Display.getHandle();
 
         // We do not want to change the cursor state since Minecraft does this for us.
         if (cursorType == CefCursorType.NONE) return;
 
-        GLFW.glfwSetCursor(windowHandle, MCEFGlfwCursorHelper.getGLFWCursorHandle(cursorType));
+        org.lwjgl.glfw.GLFW.glfwSetCursor(windowHandle, MCEFGlfwCursorHelper.getGLFWCursorHandle(cursorType));
     }
 
     /**

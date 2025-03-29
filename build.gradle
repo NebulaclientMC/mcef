@@ -7,6 +7,46 @@ plugins {
     id "maven-publish"
 }
 
+
+def getCheckedOutGitCommitHash(Project mcefParent) {
+    def gitFolder = "$mcefParent.projectDir/.git/modules/java-cef/"
+    def takeFromHash = 40
+    /*
+     * '.git/HEAD' contains either
+     *      in case of detached head: the currently checked out commit hash
+     *      otherwise: a reference to a file containing the current commit hash
+     */
+    def gitHeadFile = new File(gitFolder + "HEAD");
+    if (gitHeadFile.exists()) {
+        def head = gitHeadFile.text.split(":") // .git/HEAD
+        def isCommit = head.length == 1 // e5a7c79edabbf7dd39888442df081b1c9d8e88fd
+        // def isRef = head.length > 1     // ref: refs/heads/master
+
+        if (isCommit) return head[0].trim().take(takeFromHash) // e5a7c79edabb
+
+        def refHead = new File(gitFolder + head[1].trim()) // .git/refs/heads/master
+        refHead.text.trim().take takeFromHash
+    } else {
+        return ""
+    }
+}
+
+tasks.register('cloneJcef', Exec) {
+    commandLine 'git', 'submodule', 'update', '--init', '--recursive', 'java-cef'
+}
+
+tasks.register('generateJcefCommitFile') {
+    doLast {
+        def commitHash = getCheckedOutGitCommitHash(project)
+        if (!commitHash.isEmpty()) {
+            file("$buildDir/jcef.commit").text = commitHash
+        } else {
+            throw new GradleException("Unable to determine JCEF commit hash.")
+        }
+    }
+}
+
+
 base.archivesName = project.archives_base_name
 version = project.mod_version
 group = project.maven_group
@@ -96,8 +136,24 @@ dependencies {
 
 
 
+    implementation "com.squareup.okhttp3:okhttp:5.0.0-alpha.14"
 
 }
+
+sourceSets {
+    jcef {
+        java {
+            srcDir "java-cef/java"
+            exclude "**/tests/**"
+        }
+    }
+
+    main {
+        compileClasspath += jcef.output
+        runtimeClasspath += jcef.output
+    }
+}
+
 
 processResources {
     inputs.property "version", project.version
@@ -105,6 +161,9 @@ processResources {
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }
+
+    dependsOn processJcefResources
+    dependsOn generateJcefCommitFile
 }
 
 
@@ -119,13 +178,13 @@ tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
 
     if (JavaVersion.current().isJava9Compatible()) {
-        it.options.release = 8
+        it.options.release = 21
     }
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
     // if it is present.
@@ -134,9 +193,24 @@ java {
 }
 
 jar {
-    from("LICENSE") {
-        rename { "${it}_${base.archivesName.get()}" }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes(['Specification-Title'     : archives_base_name,
+                    'Specification-Vendor'    : group,
+                    'Specification-Version'   : "1",
+                    'Implementation-Title'    : archives_base_name,
+                    'Implementation-Version'  : mod_version,
+                    'Implementation-Vendor'   : group,
+                    'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                    'java-cef-commit'         : getCheckedOutGitCommitHash(project)
+        ])
     }
+    from sourceSets.jcef.output.classesDirs
+    from sourceSets.jcef.output.resourcesDir
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}"}
+    }
+    from("$buildDir/jcef.commit")
 }
 
 // Configure the maven publication

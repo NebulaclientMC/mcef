@@ -21,8 +21,9 @@
 
 package com.nebulaclient.mcef.cef;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.nebulaclient.mcef.MCEF;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 
@@ -39,10 +40,7 @@ public class MCEFRenderer {
 
     public void initialize() {
         textureID[0] = glGenTextures();
-        RenderSystem.bindTexture(textureID[0]);
-        RenderSystem.texParameter(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        RenderSystem.texParameter(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        RenderSystem.bindTexture(0);
+        GlStateManager.bindTexture(textureID[0]);
         unpainted = true;
     }
 
@@ -76,13 +74,13 @@ public class MCEFRenderer {
         }
 
         if (transparent) {
-            RenderSystem.enableBlend();
+            GlStateManager.enableBlend();
         }
 
-        RenderSystem.bindTexture(textureID[0]);
-        RenderSystem.pixelStore(GL_UNPACK_ROW_LENGTH, width);
-        RenderSystem.pixelStore(GL_UNPACK_SKIP_PIXELS, 0);
-        RenderSystem.pixelStore(GL_UNPACK_SKIP_ROWS, 0);
+        GlStateManager.bindTexture(textureID[0]);
+        GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
                 GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
         unpainted = false;

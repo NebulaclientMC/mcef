@@ -1,0 +1,165 @@
+plugins {
+    id 'fabric-loom'
+    id 'maven-publish'
+    id 'idea'
+}
+
+def getCheckedOutGitCommitHash(Project mcefParent) {
+    def gitFolder = "$mcefParent.projectDir/.git/modules/java-cef/"
+    def takeFromHash = 40
+    /*
+     * '.git/HEAD' contains either
+     *      in case of detached head: the currently checked out commit hash
+     *      otherwise: a reference to a file containing the current commit hash
+     */
+    def gitHeadFile = new File(gitFolder + "HEAD");
+    if (gitHeadFile.exists()) {
+        def head = gitHeadFile.text.split(":") // .git/HEAD
+        def isCommit = head.length == 1 // e5a7c79edabbf7dd39888442df081b1c9d8e88fd
+        // def isRef = head.length > 1     // ref: refs/heads/master
+
+        if (isCommit) return head[0].trim().take(takeFromHash) // e5a7c79edabb
+
+        def refHead = new File(gitFolder + head[1].trim()) // .git/refs/heads/master
+        refHead.text.trim().take takeFromHash
+    } else {
+        return ""
+    }
+}
+
+tasks.register('cloneJcef', Exec) {
+    commandLine 'git', 'submodule', 'update', '--init', '--recursive', 'java-cef'
+}
+
+tasks.register('generateJcefCommitFile') {
+    doLast {
+        def commitHash = getCheckedOutGitCommitHash(project)
+        if (!commitHash.isEmpty()) {
+            file("$buildDir/jcef.commit").text = commitHash
+        } else {
+            throw new GradleException("Unable to determine JCEF commit hash.")
+        }
+    }
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+    maven { url = 'https://maven.fabricmc.net/' }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    Set<String> apiModules = [
+            'fabric-api-base',
+            'fabric-command-api-v2',
+            'fabric-lifecycle-events-v1',
+            'fabric-networking-api-v1',
+            'fabric-resource-loader-v0',
+            'fabric-key-binding-api-v1'
+    ]
+
+    apiModules.forEach {
+        modImplementation(fabricApi.module(it, fabric_version))
+    }
+
+
+    implementation "com.squareup.okhttp3:okhttp:5.0.0-alpha.14"
+}
+
+sourceSets {
+    jcef {
+        java {
+            srcDir "java-cef/java"
+            exclude "**/tests/**"
+        }
+    }
+
+    main {
+        compileClasspath += jcef.output
+        runtimeClasspath += jcef.output
+    }
+}
+
+processResources {
+    filesMatching('fabric.mod.json') {
+        expand 'mod_id': mod_id,
+                'mod_name': mod_name,
+                'mod_vendor': mod_vendor,
+                'mod_version': mod_version,
+                'minecraft_version': minecraft_version,
+                'loader_version': loader_version
+    }
+
+    inputs.property "version", project.version
+
+    dependsOn processJcefResources
+    dependsOn generateJcefCommitFile
+}
+
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes(['Specification-Title'     : archives_base_name,
+                    'Specification-Vendor'    : group,
+                    'Specification-Version'   : "1",
+                    'Implementation-Title'    : archives_base_name,
+                    'Implementation-Version'  : mod_version,
+                    'Implementation-Vendor'   : group,
+                    'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ"),
+                    'java-cef-commit'         : getCheckedOutGitCommitHash(project)
+        ])
+    }
+    from sourceSets.jcef.output.classesDirs
+    from sourceSets.jcef.output.resourcesDir
+    from("LICENSE") {
+        rename { "${it}_${project.base.archivesName.get()}"}
+    }
+    from("$buildDir/jcef.commit")
+}
+
+
+loom{
+    accessWidenerPath = file("src/main/resources/fabric.accessWidener")
+}
+java {
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    // If you remove this line, sources will not be generated.
+    withSourcesJar()
+
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+idea {
+    module {
+        excludeDirs += file("java-cef/java/tests")
+        inheritOutputDirs true
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
+}
+
+group = 'com.github.CCBlueX'

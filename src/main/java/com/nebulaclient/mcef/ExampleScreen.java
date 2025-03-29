@@ -20,24 +20,21 @@
 
 package com.nebulaclient.mcef;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.nebulaclient.mcef.cef.MCEFBrowser;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.RenderPhase;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.texture.AbstractTexture;
+import net.minecraft.client.util.Window;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.TriState;
 import net.minecraft.util.Util;
 
 import java.util.function.Function;
 
-import static com.nebulaclient.mcef.utils.ExtendedRenderLayers.JCEF_BLEND;
 
 
 public class ExampleScreen extends Screen {
@@ -48,27 +45,28 @@ public class ExampleScreen extends Screen {
     private MCEFBrowser browser;
     private Identifier texture;
 
-    protected ExampleScreen(Text component) {
-        super(component);
+    protected ExampleScreen() {
     }
 
     @Override
-    protected void init() {
+    public void init() {
         super.init();
         if (browser == null) {
             String url = "http://127.0.0.1:3000/ui/performanceTest.html";
             boolean transparent = true;
 
             browser = MCEF.INSTANCE.createBrowser(url, transparent, 1000);
-            texture = Identifier.of("mcef" , "browser/tab/" + browser.hashCode());
+            texture = new Identifier("mcef" , "browser/tab/" + browser.hashCode());
 
 
-            minecraft.getTextureManager().registerTexture(texture, new AbstractTexture() {
+            minecraft.getTextureManager().loadTexture(texture,MinecraftClient.getInstance().getTextureManager().getTexture(texture));
+
+          /**  minecraft.getTextureManager().registerTexture(texture, new AbstractTexture() {
                 @Override
                 public int getGlId() {
                     return browser.getRenderer().getTextureID();
                 }
-            });
+            });**/
 
             resizeBrowser();
 
@@ -76,19 +74,19 @@ public class ExampleScreen extends Screen {
     }
 
     private int mouseX(double x) {
-        return (int) ((x - BROWSER_DRAW_OFFSET) * minecraft.getWindow().getScaleFactor());
+        return (int) ((x - BROWSER_DRAW_OFFSET) * new Window(MinecraftClient.getInstance()).getScaleFactor());
     }
 
     private int mouseY(double y) {
-        return (int) ((y - BROWSER_DRAW_OFFSET) * minecraft.getWindow().getScaleFactor());
+        return (int) ((y - BROWSER_DRAW_OFFSET) * new Window(MinecraftClient.getInstance()).getScaleFactor());
     }
 
     private int scaleX(double x) {
-        return (int) ((x - BROWSER_DRAW_OFFSET * 2) * minecraft.getWindow().getScaleFactor());
+        return (int) ((x - BROWSER_DRAW_OFFSET * 2) * new Window(MinecraftClient.getInstance()).getScaleFactor());
     }
 
     private int scaleY(double y) {
-        return (int) ((y - BROWSER_DRAW_OFFSET * 2) * minecraft.getWindow().getScaleFactor());
+        return (int) ((y - BROWSER_DRAW_OFFSET * 2) * new Window(MinecraftClient.getInstance()).getScaleFactor());
     }
 
     private void resizeBrowser() {
@@ -104,29 +102,35 @@ public class ExampleScreen extends Screen {
     }
 
 
-    @Override
+  /**
     public void close() {
         browser.close();
         super.close();
-    }
+    }**/
 
     @Override
-    public void render(DrawContext guiGraphics, int i, int j, float f) {
-        super.render(guiGraphics, i, j, f);
+    public void render(int mouseX, int mouseY, float tickDelta) {
+        super.render(mouseX, mouseY, tickDelta);
         browser.getRenderer().renderToTexture();
-        RenderSystem.disableDepthTest();
-        RenderSystem.enableBlend();
-        guiGraphics.drawTexture(BLURRED_TEXTURE_LAYER, texture, 20, 20, 0f, 0f, width - 40,
-               height - 40, width - 40,height - 40);
-        RenderSystem.enableDepthTest();
+        GlStateManager.disableDepthTest();
+        GlStateManager.enableBlend();
+
+        MinecraftClient.getInstance().getTextureManager().bindTexture(texture);
+
+        Screen.drawTexture(20, 20, 0f, 0f, width - 40,
+                height - 40, width - 40,height - 40);
+        GlStateManager.enableDepthTest();
     }
 
-    private static final Function<Identifier, RenderLayer> BLURRED_TEXTURE_LAYER = Util.memoize(textureId -> RenderLayer.of("blurred_ui_layer", VertexFormats.POSITION_TEXTURE_COLOR, VertexFormat.DrawMode.QUADS, 786432, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(textureId, TriState.FALSE, false)).transparency(JCEF_BLEND).program(RenderPhase.POSITION_TEXTURE_COLOR_PROGRAM).depthTest(RenderPhase.LEQUAL_DEPTH_TEST).target(RenderPhase.MAIN_TARGET).build(false)));
 
-    public static Function<Identifier, RenderLayer> getBlurredTextureLayer() {
+
+   // private static final Function<Identifier, RenderLayer> BLURRED_TEXTURE_LAYER = Util.memoize(textureId -> RenderLayer.of("blurred_ui_layer", VertexFormats.POSITION_TEXTURE_COLOR, VertexFormat.DrawMode.QUADS, 786432, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(textureId, TriState.FALSE, false)).transparency(JCEF_BLEND).program(RenderPhase.POSITION_TEXTURE_COLOR_PROGRAM).depthTest(RenderPhase.LEQUAL_DEPTH_TEST).target(RenderPhase.MAIN_TARGET).build(false)));
+
+  /**  public static Function<Identifier, RenderLayer> getBlurredTextureLayer() {
         return BLURRED_TEXTURE_LAYER;
-    }
+    }**/
 
+  /***
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         browser.sendMousePress(mouseX(mouseX), mouseY(mouseY), button);
@@ -179,4 +183,6 @@ public class ExampleScreen extends Screen {
         browser.setFocus(true);
         return super.charTyped(codePoint, modifiers);
     }
+
+    **/
 }
