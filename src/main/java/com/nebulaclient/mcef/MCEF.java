@@ -26,8 +26,6 @@ import com.nebulaclient.mcef.cef.MCEFApp;
 import com.nebulaclient.mcef.cef.MCEFBrowser;
 import com.nebulaclient.mcef.cef.MCEFClient;
 import net.minecraft.client.MinecraftClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -41,7 +39,7 @@ public enum MCEF {
 
     INSTANCE;
 
-    public final Logger LOGGER = LoggerFactory.getLogger("MCEF");
+    public final com.nebulaclient.mcef.Logger LOGGER = new com.nebulaclient.mcef.Logger();
     private MCEFSettings settings;
     private MCEFApp app;
     private MCEFClient client;

@@ -81,7 +81,7 @@ public enum MCEFPlatform {
 
         platformInstance = switch (operatingSystem) {
             case WINDOWS -> isAMD64 ? WINDOWS_AMD64 : isArm ? WINDOWS_ARM64 : null;
-            case OSX -> isAMD64 ? MACOS_AMD64 : isArm ? MACOS_ARM64 : null;
+            case MACOS -> isAMD64 ? MACOS_AMD64 : isArm ? MACOS_ARM64 : null;
             case LINUX -> isAMD64 ? LINUX_AMD64 : isArm ? LINUX_ARM64 : null;
             default -> throw new IllegalStateException("Unsupported platform: " + operatingSystem + " " + osArch);
         };
@@ -96,7 +96,7 @@ public enum MCEFPlatform {
 
         return switch (operatingSystem) {
             case WINDOWS -> checkWindowsCompatibility();
-            case OSX -> checkMacOSCompatibility(osVersion);
+            case MACOS -> checkMacOSCompatibility(osVersion);
             case LINUX -> true; // Assume Linux compatibility
             default -> false; // Unsupported OS
         };
