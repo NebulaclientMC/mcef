@@ -29,10 +29,12 @@ import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.util.Window;
+import net.minecraft.resource.ResourceManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 
+import java.io.IOException;
 import java.util.function.Function;
 
 
@@ -45,7 +47,7 @@ public class ExampleScreen extends Screen {
     private MCEFBrowser browser;
     private Identifier texture;
 
-    protected ExampleScreen() {
+    public ExampleScreen() {
     }
 
     @Override
@@ -59,7 +61,19 @@ public class ExampleScreen extends Screen {
             texture = new Identifier("mcef" , "browser/tab/" + browser.hashCode());
 
 
-            minecraft.getTextureManager().loadTexture(texture,MinecraftClient.getInstance().getTextureManager().getTexture(texture));
+            MinecraftClient.getInstance().getTextureManager().loadTexture(texture, new AbstractTexture() {
+                @Override
+                public void load(ResourceManager manager) throws IOException {
+                    return;
+                }
+
+                @Override
+                public int getGlId() {
+                    return browser.getRenderer().getTextureID();
+                }
+            });
+
+           // minecraft.getTextureManager().loadTexture(texture,MinecraftClient.getInstance().getTextureManager().getTexture(texture));
 
           /**  minecraft.getTextureManager().registerTexture(texture, new AbstractTexture() {
                 @Override

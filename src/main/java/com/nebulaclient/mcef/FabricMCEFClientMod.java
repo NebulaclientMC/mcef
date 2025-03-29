@@ -20,8 +20,10 @@
 
 package com.nebulaclient.mcef;
 
+import com.nebulaclient.mcef.cef.MCEFBrowser;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.MinecraftClient;
 
 public class FabricMCEFClientMod implements ClientModInitializer {
     @Override
