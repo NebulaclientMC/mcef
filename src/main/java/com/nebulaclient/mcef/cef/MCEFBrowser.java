@@ -142,75 +142,101 @@ public class MCEFBrowser extends CefBrowserOsr {
             return;
         }
 
-        if (!popup) {
-            if (lastWidth != width || lastHeight != height) {
-                lastWidth = width;
-                lastHeight = height;
-                // upload full texture
-                // this also sets up the texture size and creates the texture
-                renderer.onPaint(buffer, width, height);
+        GlStateManager.pushMatrix();
+        GlStateManager.pushLightingAttributes();
+
+        int[] origPackAlignment = new int[1];
+        int[] origUnpackRowLength = new int[1];
+        int[] origUnpackSkipPixels = new int[1];
+        int[] origUnpackSkipRows = new int[1];
+
+        GL11.glGetIntegerv(GL11.GL_PACK_ALIGNMENT, origPackAlignment);
+        GL11.glGetIntegerv(GL11.GL_UNPACK_ROW_LENGTH, origUnpackRowLength);
+        GL11.glGetIntegerv(GL11.GL_UNPACK_SKIP_PIXELS, origUnpackSkipPixels);
+        GL11.glGetIntegerv(GL11.GL_UNPACK_SKIP_ROWS, origUnpackSkipRows);
+
+        try {
+            if (!popup) {
+                if (lastWidth != width || lastHeight != height) {
+                    lastWidth = width;
+                    lastHeight = height;
+
+                    renderer.onPaint(buffer, width, height);
+                } else {
+                    if (renderer.getTextureID() == 0) return;
+                    GlStateManager.bindTexture(renderer.getTextureID());
+                    GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+                    for (Rectangle dirtyRect : dirtyRects) {
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
+                        renderer.onPaint(buffer, dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
+                    }
+                    if ((popupDrawn || showPopup) && popupSize != null) {
+                        // interpret where the popup was as a dirty rect
+                        if (!showPopup) {
+                            // if the popup is not visible, just draw the contents of the buffer
+                            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, popupSize.width);
+                            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, popupSize.height);
+                            renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
+                            popupGraphics = null;
+                            popupSize = null;
+                        } else if (popupDrawn) {
+                            // else, a use copy of the popup graphics, as it needs to remain visible
+                            GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
+                            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+                            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+                            renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
+                        }
+                    }
+                }
             } else {
                 if (renderer.getTextureID() == 0) return;
                 GlStateManager.bindTexture(renderer.getTextureID());
-                GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+                int start = buffer.capacity();
+                int end = 0;
                 for (Rectangle dirtyRect : dirtyRects) {
+                    GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
                     GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
                     GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
-                    renderer.onPaint(buffer, dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
+                    renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
+
+                    int rectStart = (dirtyRect.x + ((dirtyRect.y) * popupSize.width)) << 2;
+                    if (rectStart < start) start = rectStart;
+
+                    int rectEnd = ((dirtyRect.x + dirtyRect.width) + ((dirtyRect.y + popupSize.height) * dirtyRect.width)) << 2;
+                    if (rectEnd > end) end = rectEnd;
                 }
-                if ((popupDrawn || showPopup) && popupSize != null) {
-                    // interpret where the popup was as a dirty rect
-                    if (!showPopup) {
-                        // if the popup is not visible, just draw the contents of the buffer
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, popupSize.width);
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, popupSize.height);
-                        renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
-                        popupGraphics = null;
-                        popupSize = null;
-                    } else if (popupDrawn) {
-                        // else, a use copy of the popup graphics, as it needs to remain visible
-                        // and for some reason that I do not for the life of me understand, chromium does not seem to keep this data in memory outside of the paint loop, meaning it has to be copied around, which wastes performance
-                        GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-                        renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
+                if (start < 0) start = 0;
+                if (end > buffer.capacity()) end = buffer.capacity();
+
+                if (end > start) {
+                    // In 1.8.9 we don't have MemoryUtil, so we use a simple copy loop
+                    if (this.popupGraphics != null) {
+                        long addrFrom = MemoryUtil.memAddress(buffer);
+                        long addrTo = MemoryUtil.memAddress(popupGraphics);
+                        MemoryUtil.memCopy(
+                                addrFrom + start,
+                                addrTo + start,
+                                (end - start)
+                        );
                     }
                 }
+
+                popupDrawn = true;
             }
-        } else {
-            if (renderer.getTextureID() == 0) return;
-            GlStateManager.bindTexture(renderer.getTextureID());
-            int start = buffer.capacity();
-            int end = 0;
-            for (Rectangle dirtyRect : dirtyRects) {
-                GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
-                GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
-                GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
-                renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
+        } finally {
+            // Restore
+            GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, origUnpackRowLength[0]);
+            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, origUnpackSkipPixels[0]);
+            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, origUnpackSkipRows[0]);
+            GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, origPackAlignment[0]);
 
-                int rectStart = (dirtyRect.x + ((dirtyRect.y) * popupSize.width)) << 2;
-                if (rectStart < start) start = rectStart;
+            // Release
+            GlStateManager.bindTexture(0);
 
-                int rectEnd = ((dirtyRect.x + dirtyRect.width) + ((dirtyRect.y + popupSize.height) * dirtyRect.width)) << 2;
-                if (rectEnd > end) end = rectEnd;
-            }
-            if (start < 0) start = 0;
-            if (end > buffer.capacity()) end = buffer.capacity();
-
-            if (end > start) {
-                // In 1.8.9 we don't have MemoryUtil, so we use a simple copy loop
-                if (this.popupGraphics != null) {
-                    long addrFrom = MemoryUtil.memAddress(buffer);
-                    long addrTo = MemoryUtil.memAddress(popupGraphics);
-                    MemoryUtil.memCopy(
-                            addrFrom + start,
-                            addrTo + start,
-                            (end - start)
-                    );
-                }
-            }
-
-            popupDrawn = true;
+            // Restore
+            GlStateManager.popAttributes();
+            GlStateManager.popMatrix();
         }
     }
 

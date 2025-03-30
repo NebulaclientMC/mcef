@@ -17,6 +17,7 @@ import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
 import java.io.IOException;
+import java.security.Key;
 
 import com.nebulaclient.mcef.cef.MCEFBrowser;
 
@@ -145,6 +146,7 @@ public class ExampleScreen extends Screen {
 
         browser.getRenderer().renderToTexture();
 
+        GlStateManager.pushMatrix();
         GlStateManager.disableDepthTest();
         GlStateManager.enableBlend();
 
@@ -152,6 +154,7 @@ public class ExampleScreen extends Screen {
         Screen.drawTexture(0, 0, 0, 0, width, height, width, height);
 
         GlStateManager.enableDepthTest();
+        GlStateManager.popMatrix();
     }
 
 
@@ -183,7 +186,21 @@ public class ExampleScreen extends Screen {
 
         browser.sendKeyTyped(id, getModifiers());
         browser.setFocus(true);
+
+        if(code == Keyboard.KEY_ESCAPE){
+            browser.close();
+            GlStateManager.color(255,255,255,255);
+            GlStateManager.enableDepthTest();
+            GlStateManager.disableBlend();
+            GlStateManager.enableTexture();
+            GlStateManager.enableAlphaTest();
+        }
         super.keyPressed(id, code);
+    }
+
+    @Override
+    public boolean shouldPauseGame() {
+        return false;
     }
 
     private int getModifiers() {

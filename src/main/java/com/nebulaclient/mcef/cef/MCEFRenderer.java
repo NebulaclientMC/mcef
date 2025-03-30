@@ -75,6 +75,7 @@ public class MCEFRenderer {
             return;
         }
 
+        GlStateManager.pushMatrix();
         if (transparent) {
             GlStateManager.enableBlend();
         }
@@ -86,12 +87,16 @@ public class MCEFRenderer {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
                 GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
         unpainted = false;
+
+        GlStateManager.popMatrix();
     }
 
     protected void onPaint(ByteBuffer buffer, int x, int y, int width, int height) {
+        GlStateManager.pushMatrix();
         GlStateManager.bindTexture(textureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA,
                 GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
         unpainted = false;
+        GlStateManager.popMatrix();
     }
 }
