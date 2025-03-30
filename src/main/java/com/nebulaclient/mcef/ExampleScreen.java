@@ -34,6 +34,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.Sys;
 import org.lwjgl.opengl.GL11;
 
 import javax.imageio.ImageIO;
@@ -150,6 +151,7 @@ public class ExampleScreen extends Screen {
 
     @Override
     public void render(int mouseX, int mouseY, float tickDelta) {
+
         super.render(mouseX, mouseY, tickDelta);
         browser.sendMouseMove(mouseX(mouseX), mouseY(mouseY));
 

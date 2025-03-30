@@ -99,7 +99,6 @@ public class MCEFBrowser extends CefBrowserOsr {
         super(client.getHandle(), url, transparent, null, new MCEFBrowserSettings(frameRate));
         renderer = new MCEFRenderer(transparent);
         cursorChangeListener = (cefCursorID) -> setCursor(CefCursorType.fromId(cefCursorID));
-        // In 1.8.9, we need to initialize immediately since there's no RenderSystem
         renderer.initialize();
     }
 
@@ -139,7 +138,6 @@ public class MCEFBrowser extends CefBrowserOsr {
     // Graphics
     @Override
     public void onPaint(CefBrowser browser, boolean popup, Rectangle[] dirtyRects, ByteBuffer buffer, int width, int height) {
-        // nothing to update
         if (dirtyRects.length == 0) {
             return;
         }
@@ -389,10 +387,8 @@ public class MCEFBrowser extends CefBrowserOsr {
     }
 
     public void setCursor(CefCursorType cursorType) {
-        // In 1.8.9, we need to implement cursor handling differently
-        // We can't directly access GLFW window handles
+        //Ok we actually can, forgot we use the lwjgl3 here lmao
 
-        // We do not want to change the cursor state since Minecraft does this for us.
         if (cursorType == CefCursorType.NONE) return;
 
         // This would need to be implemented using the 1.8.9 mouse cursor handling

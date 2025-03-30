@@ -3,9 +3,11 @@ package com.nebulaclient.mcef.mixins;
 import com.nebulaclient.mcef.ExampleScreen;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(MinecraftClient.class)
 public class MinecraftClientMixin {
@@ -18,9 +20,13 @@ public class MinecraftClientMixin {
 
     @Inject(method = "handleKeyInput",at = @At("RETURN"))
     public void init2(CallbackInfo ci) {
-        if(!toggeled)
             MinecraftClient.getInstance().setScreen(new ExampleScreen());
-        toggeled = true;
+
+    }
+
+    @Overwrite
+    public int getMaxFramerate() {
+        return 200;
     }
 
 
