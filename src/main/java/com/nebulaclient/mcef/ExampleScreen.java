@@ -24,6 +24,7 @@ import java.security.Key;
 
 import com.nebulaclient.mcef.cef.MCEFBrowser;
 import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.GL;
 
 public class ExampleScreen extends Screen {
     private static final int drawOffset = 0;
@@ -43,6 +44,9 @@ public class ExampleScreen extends Screen {
     public ExampleScreen() {
         super();
     }
+
+    private final boolean[] keyPressed = new boolean[Keyboard.KEYBOARD_SIZE];
+
 
     @Override
     public void init() {
@@ -181,30 +185,53 @@ public class ExampleScreen extends Screen {
         int mouseY = this.height - Mouse.getEventY() * this.height / this.client.height - 1;
 
         int scroll = Mouse.getEventDWheel();
+
         if (scroll != 0) {
-            browser.sendMouseWheel(mouseX(mouseX), mouseY(mouseY), scroll > 0 ? 1 : -1, 0);
+            browser.sendMouseWheel(mouseX(mouseX), mouseY(mouseY), scroll, 0);
         }
     }
 
     @Override
-    protected void keyPressed(char id, int code) {
-
-
-        browser.sendKeyTyped(id, getModifiers());
+    protected void keyPressed(char character, int keyCode) {
         browser.setFocus(true);
 
-        if(code == Keyboard.KEY_ESCAPE){
+        if (keyCode == Keyboard.KEY_ESCAPE) {
             browser.close();
+            super.keyPressed(character, keyCode);
+            return;
         }
-        super.keyPressed(id, code);
+
+        // Let the browser handle the key event
+        if (character != 0) {
+            browser.sendKeyTyped(character, getModifiers());
+        }
     }
 
     @Override
     public void handleKeyboard() {
-        System.out.println(GLFWKeyboardImplementation.translateKeyFromGLFW(Keyboard.getEventKey()));
-        super.handleKeyboard();
-    }
+        browser.setFocus(true);
 
+            int keyCode = Keyboard.getEventKey();
+            char keyChar = Keyboard.getEventCharacter();
+            boolean isKeyDown = Keyboard.getEventKeyState();
+            int modifiers = getModifiers();
+
+            if(keyCode != -1){
+
+                int glfwKey = GLFWKeyboardImplementation.translateKeyToGLFW(keyCode);
+                int scanCode = GLFW.glfwGetKeyScancode(glfwKey);
+
+
+                if(Keyboard.getEventKeyState()){
+                    browser.sendKeyPress(glfwKey, scanCode, modifiers);
+                }else {
+                    browser.sendKeyRelease(glfwKey, scanCode, modifiers);
+
+                }
+            }
+        super.handleKeyboard();
+
+    }
     @Override
     public boolean shouldPauseGame() {
         return false;
