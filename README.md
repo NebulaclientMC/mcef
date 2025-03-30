@@ -6,8 +6,7 @@
 
 A lightweight fork of MCEF designed specifically for integration with Nebula Client and other clients. This barebone library provides essential Chromium web browser functionality for Minecraft.
 
-MCEF is based on java-cef (Java Chromium Embedded Framework), which is based on CEF (Chromium Embedded Framework), which is based on Chromium. Originally created by montoyo and rewritten by the CinemaMod Group, this version has been streamlined for LiquidBounce integration.
-
+MCEF is based on java-cef (Java Chromium Embedded Framework), which is based on CEF (Chromium Embedded Framework), which is based on Chromium. This was previously for LiquidBounce and we make some modifications to work better with our client.
 The library includes a downloader system for retrieving the necessary java-cef & CEF binaries required by the Chromium browser. This requires a connection to https://api.liquidbounce.net/, as well as Cloudflare Storage.
 
 Current Chromium version: `122.0.6261.112`
