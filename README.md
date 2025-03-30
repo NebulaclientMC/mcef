@@ -4,7 +4,7 @@
 
 # MCEF (Minecraft Chromium Embedded Framework for Nebula Client)
 
-A lightweight fork of MCEF designed specifically for integration with LiquidBounce. This barebone library provides essential Chromium web browser functionality for Minecraft.
+A lightweight fork of MCEF designed specifically for integration with Nebula Client and other clients. This barebone library provides essential Chromium web browser functionality for Minecraft.
 
 MCEF is based on java-cef (Java Chromium Embedded Framework), which is based on CEF (Chromium Embedded Framework), which is based on Chromium. Originally created by montoyo and rewritten by the CinemaMod Group, this version has been streamlined for LiquidBounce integration.
 
