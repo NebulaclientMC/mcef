@@ -6,6 +6,7 @@
 package com.nebulaclient.mcef;
 
 import com.mojang.blaze3d.platform.GlStateManager;
+import com.nebulaclient.lwjgl3.implementation.glfw.GLFWKeyboardImplementation;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.texture.AbstractTexture;
@@ -13,6 +14,8 @@ import net.minecraft.client.util.Window;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
 
+import org.lwjgl.Sys;
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 
@@ -20,6 +23,7 @@ import java.io.IOException;
 import java.security.Key;
 
 import com.nebulaclient.mcef.cef.MCEFBrowser;
+import org.lwjgl.opengl.Display;
 
 public class ExampleScreen extends Screen {
     private static final int drawOffset = 0;
@@ -149,10 +153,12 @@ public class ExampleScreen extends Screen {
         GlStateManager.pushMatrix();
         GlStateManager.disableDepthTest();
         GlStateManager.enableBlend();
+        GlStateManager.enableAlphaTest();
 
         client.getTextureManager().bindTexture(texture);
         Screen.drawTexture(0, 0, 0, 0, width, height, width, height);
 
+        GlStateManager.disableAlphaTest();
         GlStateManager.enableDepthTest();
         GlStateManager.popMatrix();
     }
@@ -189,13 +195,14 @@ public class ExampleScreen extends Screen {
 
         if(code == Keyboard.KEY_ESCAPE){
             browser.close();
-            GlStateManager.color(255,255,255,255);
-            GlStateManager.enableDepthTest();
-            GlStateManager.disableBlend();
-            GlStateManager.enableTexture();
-            GlStateManager.enableAlphaTest();
         }
         super.keyPressed(id, code);
+    }
+
+    @Override
+    public void handleKeyboard() {
+        System.out.println(GLFWKeyboardImplementation.translateKeyFromGLFW(Keyboard.getEventKey()));
+        super.handleKeyboard();
     }
 
     @Override
