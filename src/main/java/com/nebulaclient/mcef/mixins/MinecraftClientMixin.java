@@ -14,10 +14,13 @@ public class MinecraftClientMixin {
     public void init(CallbackInfo ci) {
         System.setProperty("java.awt.headless", "true"); //Do not remove
     }
+    boolean toggeled = false;
 
-    @Inject(method = "initializeGame",at = @At("RETURN"))
+    @Inject(method = "handleKeyInput",at = @At("RETURN"))
     public void init2(CallbackInfo ci) {
-        MinecraftClient.getInstance().setScreen(new ExampleScreen());
+        if(!toggeled)
+            MinecraftClient.getInstance().setScreen(new ExampleScreen());
+        toggeled = true;
     }
 
 
