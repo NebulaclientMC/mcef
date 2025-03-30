@@ -36,14 +36,18 @@ import org.cef.event.CefKeyEvent;
 import org.cef.event.CefMouseEvent;
 import org.cef.event.CefMouseWheelEvent;
 import org.cef.misc.CefCursorType;
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.BufferUtils;
+import org.lwjgl.system.MemoryUtil;
 
 import java.awt.*;
 import java.nio.ByteBuffer;
 
+import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 
 /**
@@ -90,10 +94,6 @@ public class MCEFBrowser extends CefBrowserOsr {
     private final boolean isMacOs = MCEFPlatform.getPlatform().isMacOS();
 
     // Constants for GLFW key events - these don't exist in LWJGL 2.9
-    private static final int GLFW_PRESS = 1;
-    private static final int GLFW_RELEASE = 0;
-    private static final int GLFW_KEY_R = 82;
-    private static final int GLFW_MOD_CONTROL = 2;
 
     public MCEFBrowser(MCEFClient client, String url, boolean transparent, int frameRate) {
         super(client.getHandle(), url, transparent, null, new MCEFBrowserSettings(frameRate));
@@ -200,18 +200,13 @@ public class MCEFBrowser extends CefBrowserOsr {
             if (end > start) {
                 // In 1.8.9 we don't have MemoryUtil, so we use a simple copy loop
                 if (this.popupGraphics != null) {
-                    // Create a copy of the region
-                    buffer.position(start);
-                    popupGraphics.position(start);
-
-                    // Copy byte by byte for the needed region
-                    byte[] tmp = new byte[end - start];
-                    buffer.get(tmp);
-                    popupGraphics.put(tmp);
-
-                    // Reset positions
-                    buffer.position(0);
-                    popupGraphics.position(0);
+                    long addrFrom = MemoryUtil.memAddress(buffer);
+                    long addrTo = MemoryUtil.memAddress(popupGraphics);
+                    MemoryUtil.memCopy(
+                            addrFrom + start,
+                            addrTo + start,
+                            (end - start)
+                    );
                 }
             }
 
@@ -223,6 +218,7 @@ public class MCEFBrowser extends CefBrowserOsr {
         browser_rect_.setBounds(0, 0, width, height);
         wasResized(width, height);
     }
+
 
     // Inputs
     public void sendKeyPress(int keyCode, long scanCode, int modifiers) {
@@ -276,7 +272,7 @@ public class MCEFBrowser extends CefBrowserOsr {
         }
 
         // Double click handling
-        long time = System.currentTimeMillis();
+        var time = System.currentTimeMillis();
         clicks = time - lastClickTime < 500 ? 2 : 1;
 
         sendMouseEvent(new CefMouseEvent(GLFW_PRESS, mouseX, mouseY, clicks, button, btnMask));
@@ -322,9 +318,10 @@ public class MCEFBrowser extends CefBrowserOsr {
             amount = amount * 3;
         }
 
-        CefMouseWheelEvent event = new CefMouseWheelEvent(CefMouseWheelEvent.WHEEL_UNIT_SCROLL, mouseX, mouseY, amount, 0);
+        var event = new CefMouseWheelEvent(CefMouseWheelEvent.WHEEL_UNIT_SCROLL, mouseX, mouseY, amount, 0);
         sendMouseWheelEvent(event);
     }
+
 
     // Drag & drop
     @Override
@@ -346,10 +343,9 @@ public class MCEFBrowser extends CefBrowserOsr {
         super.updateDragCursor(browser, operation);
     }
 
-    // Expose drag & drop functions
     public void startDragging(CefDragData dragData, int mask, int x, int y) {
         // Overload since the JCEF method requires a browser, which then goes unused
-        startDragging(this, dragData, mask, x, y);
+        startDragging(dragData, mask, x, y);
     }
 
     public void finishDragging(int x, int y) {
@@ -386,14 +382,14 @@ public class MCEFBrowser extends CefBrowserOsr {
         return super.onCursorChange(browser, cursorType);
     }
 
-    public void setCursor(CefCursorType cursorType) {
-        //Ok we actually can, forgot we use the lwjgl3 here lmao
 
+    public void setCursor(CefCursorType cursorType) {
+        var windowHandle = Display.getHandle();
+
+        // We do not want to change the cursor state since Minecraft does this for us.
         if (cursorType == CefCursorType.NONE) return;
 
-        // This would need to be implemented using the 1.8.9 mouse cursor handling
-        // Instead of GLFW cursor handling
-        //MCEFGlfwCursorHelper.setCursor(cursorType);
+        org.lwjgl.glfw.GLFW.glfwSetCursor(windowHandle, MCEFGlfwCursorHelper.getGLFWCursorHandle(cursorType));
     }
 
     /**

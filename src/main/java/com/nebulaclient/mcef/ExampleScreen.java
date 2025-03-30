@@ -21,40 +21,37 @@
 package com.nebulaclient.mcef;
 
 import com.mojang.blaze3d.platform.GlStateManager;
-import com.nebulaclient.mcef.cef.MCEFBrowser;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.util.Window;
 import net.minecraft.resource.ResourceManager;
-import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
-import net.minecraft.util.Util;
-import org.lwjgl.BufferUtils;
-import org.lwjgl.Sys;
-import org.lwjgl.opengl.GL11;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.File;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
+
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.function.Function;
 
-
+import com.nebulaclient.mcef.cef.MCEFBrowser;
 
 public class ExampleScreen extends Screen {
-    private static final int BROWSER_DRAW_OFFSET = 20;
+    private static final int drawOffset = 0;
 
-    MinecraftClient minecraft = MinecraftClient.getInstance();
+    MinecraftClient client = MinecraftClient.getInstance();
 
     private MCEFBrowser browser;
     private Identifier texture;
 
+    private int prevMouseX = 0;
+    private int prevMouseY = 0;
+
+    private boolean isPressLeft = false;
+    private boolean isPressRight = false;
+    private boolean isPressMiddle = false;
+
     public ExampleScreen() {
+        super();
     }
 
     @Override
@@ -62,17 +59,15 @@ public class ExampleScreen extends Screen {
         super.init();
         if (browser == null) {
             String url = "http://127.0.0.1:3000/ui/performanceTest.html";
-            boolean transparent = false;
+            boolean transparent = true;
 
-            browser = MCEF.INSTANCE.createBrowser(url, false, 1000);
-            browser.getRenderer().initialize();
-
+            browser = MCEF.INSTANCE.createBrowser(url, transparent, 1000);
             texture = new Identifier("mcef", "browser/tab/" + browser.hashCode());
 
-            MinecraftClient.getInstance().getTextureManager().loadTexture(texture, new AbstractTexture() {
+            client.getTextureManager().loadTexture(texture, new AbstractTexture() {
                 @Override
                 public void load(ResourceManager manager) throws IOException {
-                    return;
+                    //Why does it need to be there lmao
                 }
 
                 @Override
@@ -81,53 +76,28 @@ public class ExampleScreen extends Screen {
                 }
             });
 
-
             resizeBrowser();
         }
     }
 
-    private void saveTextureToFile(int textureId, String filePath) {
-        int width = 1024; // Adjust based on your texture size
-        int height = 512;
-
-        ByteBuffer buffer = BufferUtils.createByteBuffer(width * height * 4);
-
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
-        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buffer);
-
-        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int i = (x + (width * (height - y - 1))) * 4;
-                int r = buffer.get(i) & 0xFF;
-                int g = buffer.get(i + 1) & 0xFF;
-                int b = buffer.get(i + 2) & 0xFF;
-                int a = buffer.get(i + 3) & 0xFF;
-                int pixel = (a << 24) | (r << 16) | (g << 8) | b;
-                image.setRGB(x, y, pixel);
-            }
-        }
-
-        try {
-            ImageIO.write(image, "PNG", new File(filePath));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    private int mouseX(double x) {
-        return (int) ((x - BROWSER_DRAW_OFFSET) * new Window(MinecraftClient.getInstance()).getScaleFactor());
+    private int mouseX(int x) {
+        return (int) ((x - drawOffset) * getScaleFactor());
     }
 
-    private int mouseY(double y) {
-        return (int) ((y - BROWSER_DRAW_OFFSET) * new Window(MinecraftClient.getInstance()).getScaleFactor());
+    private int mouseY(int y) {
+        return (int) ((y - drawOffset) * getScaleFactor());
     }
 
-    private int scaleX(double x) {
-        return (int) ((x - BROWSER_DRAW_OFFSET * 2) * new Window(MinecraftClient.getInstance()).getScaleFactor());
+    private int scaleX(int x) {
+        return (int) ((x - drawOffset * 2) * getScaleFactor());
     }
 
-    private int scaleY(double y) {
-        return (int) ((y - BROWSER_DRAW_OFFSET * 2) * new Window(MinecraftClient.getInstance()).getScaleFactor());
+    private int scaleY(int y) {
+        return (int) ((y - drawOffset * 2) * getScaleFactor());
+    }
+
+    private float getScaleFactor() {
+        return new Window(MinecraftClient.getInstance()).getScaleFactor();
     }
 
     private void resizeBrowser() {
@@ -137,111 +107,113 @@ public class ExampleScreen extends Screen {
     }
 
     @Override
-    public void resize(MinecraftClient minecraft, int i, int j) {
-        super.resize(minecraft, i, j);
+    public void resize(MinecraftClient client, int width, int height) {
+        super.resize(client, width, height);
         resizeBrowser();
     }
 
-
-  /**
-    public void close() {
+    @Override
+    public void removed() {
         browser.close();
-        super.close();
-    }**/
+        super.removed();
+    }
 
     @Override
-    public void render(int mouseX, int mouseY, float tickDelta) {
+    public void render(int mouseX, int mouseY, float delta) {
+        super.render(mouseX, mouseY, delta);
 
-        super.render(mouseX, mouseY, tickDelta);
-        browser.sendMouseMove(mouseX(mouseX), mouseY(mouseY));
+        if (prevMouseX != mouseX || prevMouseY != mouseY) {
+            browser.sendMouseMove(mouseX(mouseX), mouseY(mouseY));
+        }
+        prevMouseX = mouseX;
+        prevMouseY = mouseY;
 
-        saveTextureToFile(browser.getRenderer().getTextureID(), "browser_texture.png");
+        boolean isLeftDown = Mouse.isButtonDown(0);
+        if (isLeftDown && !isPressLeft) {
+            browser.sendMousePress(mouseX(mouseX), mouseY(mouseY), 0);
+            browser.setFocus(true);
+            isPressLeft = true;
+        } else if (!isLeftDown && isPressLeft) {
+            browser.sendMouseRelease(mouseX(mouseX), mouseY(mouseY), 0);
+            isPressLeft = false;
+        }
+
+        boolean isRightDown = Mouse.isButtonDown(1);
+        if (isRightDown && !isPressRight) {
+            browser.sendMousePress(mouseX(mouseX), mouseY(mouseY), 1);
+            browser.setFocus(true);
+            isPressRight = true;
+        } else if (!isRightDown && isPressRight) {
+            browser.sendMouseRelease(mouseX(mouseX), mouseY(mouseY), 1);
+            isPressRight = false;
+        }
+
+        boolean isMiddleDown = Mouse.isButtonDown(2);
+        if (isMiddleDown && !isPressMiddle) {
+            browser.sendMousePress(mouseX(mouseX), mouseY(mouseY), 2);
+            browser.setFocus(true);
+            isPressMiddle = true;
+        } else if (!isMiddleDown && isPressMiddle) {
+            browser.sendMouseRelease(mouseX(mouseX), mouseY(mouseY), 2);
+            isPressMiddle = false;
+        }
+
         browser.getRenderer().renderToTexture();
+
         GlStateManager.disableDepthTest();
         GlStateManager.enableBlend();
 
-        MinecraftClient.getInstance().getTextureManager().bindTexture(texture);
-        Screen.drawTexture(20, 20, 0f, 0f, width - 40,
-                height - 40, width - 40,height - 40);
-        MinecraftClient.getInstance().getTextureManager().bindTexture(texture);
+        client.getTextureManager().bindTexture(texture);
+        Screen.drawTexture(0, 0, 0, 0, width, height, width, height);
 
-        GlStateManager.bindTexture(0);
         GlStateManager.enableDepthTest();
     }
 
+
     @Override
-    protected void mouseClicked(int mouseX, int mouseY, int button) {
-        browser.sendMousePress(mouseX(mouseX), mouseY(mouseY), button);
+    public void mouseClicked(int mouseX, int mouseY, int button) {
+    }
+
+    @Override
+    public void mouseReleased(int mouseX, int mouseY, int button) {
+    }
+
+    //Need to fix that crap, scrolling sucks rn
+    @Override
+    public void handleMouse() {
+        super.handleMouse();
+
+        int mouseX = Mouse.getEventX() * this.width / this.client.width;
+        int mouseY = this.height - Mouse.getEventY() * this.height / this.client.height - 1;
+
+        int scroll = Mouse.getEventDWheel();
+        if (scroll != 0) {
+            browser.sendMouseWheel(mouseX(mouseX), mouseY(mouseY), scroll > 0 ? 1 : -1, 0);
+        }
+    }
+
+    @Override
+    protected void keyPressed(char id, int code) {
+        browser.sendKeyPress(id, id, getModifiers());
         browser.setFocus(true);
-        super.mouseClicked(mouseX, mouseY, button);
+        super.keyPressed(id, code);
     }
 
-    @Override
-    protected void mouseReleased(int mouseX, int mouseY, int button) {
-        browser.sendMouseRelease(mouseX(mouseX), mouseY(mouseY), button);
-        browser.setFocus(true);
+    private int getModifiers() {
+        int modifiers = 0;
 
-        super.mouseReleased(mouseX, mouseY, button);
+        if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT)) {
+            modifiers |= 1; // SHIFT
+        }
+
+        if (Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL)) {
+            modifiers |= 2; // CTRL
+        }
+
+        if (Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU)) {
+            modifiers |= 4; // ALT
+        }
+
+        return modifiers;
     }
-    // private static final Function<Identifier, RenderLayer> BLURRED_TEXTURE_LAYER = Util.memoize(textureId -> RenderLayer.of("blurred_ui_layer", VertexFormats.POSITION_TEXTURE_COLOR, VertexFormat.DrawMode.QUADS, 786432, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(textureId, TriState.FALSE, false)).transparency(JCEF_BLEND).program(RenderPhase.POSITION_TEXTURE_COLOR_PROGRAM).depthTest(RenderPhase.LEQUAL_DEPTH_TEST).target(RenderPhase.MAIN_TARGET).build(false)));
-
-  /**  public static Function<Identifier, RenderLayer> getBlurredTextureLayer() {
-        return BLURRED_TEXTURE_LAYER;
-    }**/
-
-  /***
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        browser.sendMousePress(mouseX(mouseX), mouseY(mouseY), button);
-        browser.setFocus(true);
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        browser.sendMouseRelease(mouseX(mouseX), mouseY(mouseY), button);
-        browser.setFocus(true);
-        return super.mouseReleased(mouseX, mouseY, button);
-    }
-
-    @Override
-    public void mouseMoved(double mouseX, double mouseY) {
-        browser.sendMouseMove(mouseX(mouseX), mouseY(mouseY));
-        super.mouseMoved(mouseX, mouseY);
-    }
-
-    @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
-    }
-
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        browser.sendMouseWheel(mouseX(mouseX), mouseY(mouseY), scrollY, 0);
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        browser.sendKeyPress(keyCode, scanCode, modifiers);
-        browser.setFocus(true);
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
-        browser.sendKeyRelease(keyCode, scanCode, modifiers);
-        browser.setFocus(true);
-        return super.keyReleased(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean charTyped(char codePoint, int modifiers) {
-        if (codePoint == (char) 0) return false;
-        browser.sendKeyTyped(codePoint, modifiers);
-        browser.setFocus(true);
-        return super.charTyped(codePoint, modifiers);
-    }
-
-    **/
 }
