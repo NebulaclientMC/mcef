@@ -33,8 +33,14 @@ import net.minecraft.resource.ResourceManager;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.function.Function;
 
 
@@ -55,11 +61,10 @@ public class ExampleScreen extends Screen {
         super.init();
         if (browser == null) {
             String url = "http://127.0.0.1:3000/ui/performanceTest.html";
-            boolean transparent = true;
+            boolean transparent = false;
 
-            browser = MCEF.INSTANCE.createBrowser(url, transparent, 1000);
-            texture = new Identifier("mcef" , "browser/tab/" + browser.hashCode());
-
+            browser = MCEF.INSTANCE.createBrowser(url, false, 1000);
+            texture = new Identifier("mcef", "browser/tab/" + browser.hashCode());
 
             MinecraftClient.getInstance().getTextureManager().loadTexture(texture, new AbstractTexture() {
                 @Override
@@ -73,20 +78,39 @@ public class ExampleScreen extends Screen {
                 }
             });
 
-           // minecraft.getTextureManager().loadTexture(texture,MinecraftClient.getInstance().getTextureManager().getTexture(texture));
-
-          /**  minecraft.getTextureManager().registerTexture(texture, new AbstractTexture() {
-                @Override
-                public int getGlId() {
-                    return browser.getRenderer().getTextureID();
-                }
-            });**/
 
             resizeBrowser();
-
         }
     }
 
+    private void saveTextureToFile(int textureId, String filePath) {
+        int width = 1024; // Adjust based on your texture size
+        int height = 512;
+
+        ByteBuffer buffer = BufferUtils.createByteBuffer(width * height * 4);
+
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
+        GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buffer);
+
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int i = (x + (width * (height - y - 1))) * 4;
+                int r = buffer.get(i) & 0xFF;
+                int g = buffer.get(i + 1) & 0xFF;
+                int b = buffer.get(i + 2) & 0xFF;
+                int a = buffer.get(i + 3) & 0xFF;
+                int pixel = (a << 24) | (r << 16) | (g << 8) | b;
+                image.setRGB(x, y, pixel);
+            }
+        }
+
+        try {
+            ImageIO.write(image, "PNG", new File(filePath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
     private int mouseX(double x) {
         return (int) ((x - BROWSER_DRAW_OFFSET) * new Window(MinecraftClient.getInstance()).getScaleFactor());
     }
@@ -125,20 +149,37 @@ public class ExampleScreen extends Screen {
     @Override
     public void render(int mouseX, int mouseY, float tickDelta) {
         super.render(mouseX, mouseY, tickDelta);
+        browser.sendMouseMove(mouseX(mouseX), mouseY(mouseY));
+
+        saveTextureToFile(browser.getRenderer().getTextureID(), "browser_texture.png");
         browser.getRenderer().renderToTexture();
         GlStateManager.disableDepthTest();
         GlStateManager.enableBlend();
 
         MinecraftClient.getInstance().getTextureManager().bindTexture(texture);
-
         Screen.drawTexture(20, 20, 0f, 0f, width - 40,
                 height - 40, width - 40,height - 40);
+        MinecraftClient.getInstance().getTextureManager().bindTexture(texture);
+
+        GlStateManager.bindTexture(0);
         GlStateManager.enableDepthTest();
     }
 
+    @Override
+    protected void mouseClicked(int mouseX, int mouseY, int button) {
+        browser.sendMousePress(mouseX(mouseX), mouseY(mouseY), button);
+        browser.setFocus(true);
+        super.mouseClicked(mouseX, mouseY, button);
+    }
 
+    @Override
+    protected void mouseReleased(int mouseX, int mouseY, int button) {
+        browser.sendMouseRelease(mouseX(mouseX), mouseY(mouseY), button);
+        browser.setFocus(true);
 
-   // private static final Function<Identifier, RenderLayer> BLURRED_TEXTURE_LAYER = Util.memoize(textureId -> RenderLayer.of("blurred_ui_layer", VertexFormats.POSITION_TEXTURE_COLOR, VertexFormat.DrawMode.QUADS, 786432, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(textureId, TriState.FALSE, false)).transparency(JCEF_BLEND).program(RenderPhase.POSITION_TEXTURE_COLOR_PROGRAM).depthTest(RenderPhase.LEQUAL_DEPTH_TEST).target(RenderPhase.MAIN_TARGET).build(false)));
+        super.mouseReleased(mouseX, mouseY, button);
+    }
+    // private static final Function<Identifier, RenderLayer> BLURRED_TEXTURE_LAYER = Util.memoize(textureId -> RenderLayer.of("blurred_ui_layer", VertexFormats.POSITION_TEXTURE_COLOR, VertexFormat.DrawMode.QUADS, 786432, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(textureId, TriState.FALSE, false)).transparency(JCEF_BLEND).program(RenderPhase.POSITION_TEXTURE_COLOR_PROGRAM).depthTest(RenderPhase.LEQUAL_DEPTH_TEST).target(RenderPhase.MAIN_TARGET).build(false)));
 
   /**  public static Function<Identifier, RenderLayer> getBlurredTextureLayer() {
         return BLURRED_TEXTURE_LAYER;

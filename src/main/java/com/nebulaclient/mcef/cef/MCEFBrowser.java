@@ -33,6 +33,7 @@ import org.cef.event.CefKeyEvent;
 import org.cef.event.CefMouseEvent;
 import org.cef.event.CefMouseWheelEvent;
 import org.cef.misc.CefCursorType;
+import org.lwjgl.Sys;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL;
@@ -134,83 +135,92 @@ public class MCEFBrowser extends CefBrowserOsr {
     // Graphics
     @Override
     public void onPaint(CefBrowser browser, boolean popup, Rectangle[] dirtyRects, ByteBuffer buffer, int width, int height) {
-        // nothing to update
-        if (dirtyRects.length == 0) {
+        if (dirtyRects.length == 0 || renderer.getTextureID() == 0) {
             return;
         }
+
+        System.out.println(renderer.getTextureID() + " text id");
+
+        GlStateManager.bindTexture(renderer.getTextureID());
 
         if (!popup) {
             if (lastWidth != width || lastHeight != height) {
                 lastWidth = width;
                 lastHeight = height;
-                // upload full texture
-                // this also sets up the texture size and creates the texture
+                fillBufferRed(buffer, width, height);
                 renderer.onPaint(buffer, width, height);
             } else {
-                if (renderer.getTextureID() == 0) return;
-                GlStateManager.bindTexture(renderer.getTextureID());
                 GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
                 for (Rectangle dirtyRect : dirtyRects) {
                     GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
                     GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
+                    fillBufferRed(buffer, dirtyRect.width, dirtyRect.height);
                     renderer.onPaint(buffer, dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
                 }
-                if ((popupDrawn || showPopup) && popupSize != null) {
-                    // interpret where the popup was as a dirty rect
-                    if (!showPopup) {
-                        // if the popup is not visible, just draw the contents of the buffer
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, popupSize.width);
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, popupSize.height);
-                        renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
-                        popupGraphics = null;
-                        popupSize = null;
-                    } else if (popupDrawn) {
-                        // else, a use copy of the popup graphics, as it needs to remain visible
-                        // and for some reason that I do not for the life of me understand, chromium does not seem to keep this data in memory outside of the paint loop, meaning it has to be copied around, which wastes performance
-                        GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-                        renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
-                    }
-                }
+            }
+
+            if ((popupDrawn || showPopup) && popupSize != null) {
+                handlePopupPainting(buffer);
             }
         } else {
-            if (renderer.getTextureID() == 0) return;
-            GlStateManager.bindTexture(renderer.getTextureID());
-            int start = buffer.capacity();
-            int end = 0;
-            for (Rectangle dirtyRect : dirtyRects) {
-                GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
-                GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
-                GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
-                renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
-
-                int rectStart = (dirtyRect.x + ((dirtyRect.y) * popupSize.width)) << 2;
-                if (rectStart < start) start = rectStart;
-
-                int rectEnd = ((dirtyRect.x + dirtyRect.width) + ((dirtyRect.y + popupSize.height) * dirtyRect.width)) << 2;
-                if (rectEnd > end) end = rectEnd;
-            }
-            if (start < 0) start = 0;
-            if (end > buffer.capacity()) end = buffer.capacity();
-
-            if (end > start) {
-                // TODO: check if it's more performant to go for row-wise copies or if it's better to just copy the updated region
-                if (this.popupGraphics != null) {
-                    long addrFrom = MemoryUtil.memAddress(buffer);
-                    long addrTo = MemoryUtil.memAddress(popupGraphics);
-                    MemoryUtil.memCopy(
-                            addrFrom + start,
-                            addrTo + start,
-                            (end - start)
-                    );
-                }
-            }
-
+            handlePopupBuffering(buffer, dirtyRects);
             popupDrawn = true;
         }
     }
 
+    private void handlePopupPainting(ByteBuffer buffer) {
+        if (!showPopup) {
+            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, popupSize.width);
+            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, popupSize.height);
+            fillBufferRed(buffer, popupSize.width, popupSize.height);
+            renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
+            popupGraphics = null;
+            popupSize = null;
+        } else if (popupDrawn) {
+            GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
+            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+            fillBufferRed(popupGraphics, popupSize.width, popupSize.height);
+            renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
+        }
+    }
+
+    private void handlePopupBuffering(ByteBuffer buffer, Rectangle[] dirtyRects) {
+        int start = buffer.capacity();
+        int end = 0;
+
+        for (Rectangle dirtyRect : dirtyRects) {
+            GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
+            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
+            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
+            fillBufferRed(buffer, dirtyRect.width, dirtyRect.height);
+            renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
+
+            int rectStart = (dirtyRect.x + (dirtyRect.y * popupSize.width)) << 2;
+            int rectEnd = ((dirtyRect.x + dirtyRect.width) + ((dirtyRect.y + popupSize.height) * dirtyRect.width)) << 2;
+
+            start = Math.min(start, rectStart);
+            end = Math.max(end, rectEnd);
+        }
+
+        if (start < end && popupGraphics != null) {
+            MemoryUtil.memCopy(
+                    MemoryUtil.memAddress(buffer) + start,
+                    MemoryUtil.memAddress(popupGraphics) + start,
+                    end - start
+            );
+        }
+    }
+
+    private void fillBufferRed(ByteBuffer buffer, int width, int height) {
+        int size = width * height * 4; // Assuming 4 bytes per pixel (RGBA)
+        for (int i = 0; i < size; i += 4) {
+            buffer.put(i, (byte) 255);  // Red
+            buffer.put(i + 1, (byte) 0); // Green
+            buffer.put(i + 2, (byte) 0); // Blue
+            buffer.put(i + 3, (byte) 255); // Alpha
+        }
+    }
     public void resize(int width, int height) {
         browser_rect_.setBounds(0, 0, width, height);
         wasResized(width, height);

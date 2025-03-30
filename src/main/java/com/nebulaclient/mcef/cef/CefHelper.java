@@ -26,6 +26,7 @@ import com.nebulaclient.mcef.MCEFPlatform;
 import org.cef.CefApp;
 import org.cef.CefClient;
 import org.cef.CefSettings;
+import org.lwjgl.Sys;
 
 import java.io.File;
 import java.io.IOException;
@@ -90,13 +91,14 @@ public final class CefHelper {
                 throw new RuntimeException("Missing native library: " + nativeFile.getPath());
             }
         }
-
+        System.setProperty("ide.browser.jcef.debug.port","9222");
         System.setProperty("jcef.path", platformDirectory.getAbsolutePath());
         if (!CefApp.startup(cefSwitches)) {
             return false;
         }
 
         var cefSettings = new CefSettings();
+        cefSettings.remote_debugging_port = 9222;
         cefSettings.windowless_rendering_enabled = true;
         cefSettings.background_color = cefSettings.new ColorType(0, 255, 255, 255);
         cefSettings.cache_path = settings.getCacheDirectory() != null ? settings.getCacheDirectory().getAbsolutePath() : null;
