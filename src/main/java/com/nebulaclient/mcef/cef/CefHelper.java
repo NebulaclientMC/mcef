@@ -100,7 +100,7 @@ public final class CefHelper {
         var cefSettings = new CefSettings();
         cefSettings.remote_debugging_port = 9222;
         cefSettings.windowless_rendering_enabled = true;
-        cefSettings.background_color = cefSettings.new ColorType(0, 255, 255, 255);
+        cefSettings.background_color = cefSettings.new ColorType(0, 255, 0, 255);
         cefSettings.cache_path = settings.getCacheDirectory() != null ? settings.getCacheDirectory().getAbsolutePath() : null;
         // Set the user agent if there's one defined in MCEFSettings
         if (settings.getUserAgent() != null) {
