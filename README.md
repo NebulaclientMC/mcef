@@ -24,17 +24,6 @@ Current Chromium version: `122.0.6261.112`
 ## For Modders
 MCEF is LGPL, as long as your project doesn't modify or include MCEF source code, you can choose a different license. See the full license in the LICENSE file.
 
-### Using MCEF in Your Project
-```gradle
-repositories {
-    maven { url 'https://jitpack.io' }
-}
-```
-```gradle
-dependencies {
-    modImplementation 'com.github.CCBlueX:mcef:3.0.0-1.21.4'
-}
-```
 
 ### Building & Modifying MCEF
 After cloning this repo, you will need to clone the java-cef git submodule using the provided gradle task: `./gradlew cloneJcef`.
