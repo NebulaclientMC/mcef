@@ -64,6 +64,8 @@ public class ExampleScreen extends Screen {
             boolean transparent = false;
 
             browser = MCEF.INSTANCE.createBrowser(url, false, 1000);
+            browser.getRenderer().initialize();
+
             texture = new Identifier("mcef", "browser/tab/" + browser.hashCode());
 
             MinecraftClient.getInstance().getTextureManager().loadTexture(texture, new AbstractTexture() {

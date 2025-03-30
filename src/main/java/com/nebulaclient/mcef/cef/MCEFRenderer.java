@@ -18,7 +18,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301
  * USA
  */
-
 package com.nebulaclient.mcef.cef;
 
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -27,11 +26,12 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 
+import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL12.*;
 
 public class MCEFRenderer {
     private final boolean transparent;
-    private final int[] textureID = new int[1];
+    private int textureID = 0;
     private boolean unpainted = true;
 
     protected MCEFRenderer(boolean transparent) {
@@ -39,13 +39,16 @@ public class MCEFRenderer {
     }
 
     public void initialize() {
-        textureID[0] = glGenTextures();
-        GlStateManager.bindTexture(textureID[0]);
+        textureID = glGenTextures();
+        GlStateManager.bindTexture(textureID);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        GlStateManager.bindTexture(0);
         unpainted = true;
     }
 
     public int getTextureID() {
-        return textureID[0];
+        return textureID;
     }
 
     public boolean isUnpainted() {
@@ -57,19 +60,18 @@ public class MCEFRenderer {
     }
 
     protected void cleanup() {
-        if (textureID[0] != 0) {
-            glDeleteTextures(textureID[0]);
-            textureID[0] = 0;
+        if (textureID != 0) {
+            glDeleteTextures(textureID);
+            textureID = 0;
         }
     }
 
-
-    public void renderToTexture(){
+    public void renderToTexture() {
         MCEF.INSTANCE.getApp().getHandle().N_DoMessageLoopWork();
     }
 
     protected void onPaint(ByteBuffer buffer, int width, int height) {
-        if (textureID[0] == 0) {
+        if (textureID == 0) {
             return;
         }
 
@@ -77,7 +79,7 @@ public class MCEFRenderer {
             GlStateManager.enableBlend();
         }
 
-        GlStateManager.bindTexture(textureID[0]);
+        GlStateManager.bindTexture(textureID);
         GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
         GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
         GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
@@ -87,6 +89,7 @@ public class MCEFRenderer {
     }
 
     protected void onPaint(ByteBuffer buffer, int x, int y, int width, int height) {
+        GlStateManager.bindTexture(textureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA,
                 GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
         unpainted = false;

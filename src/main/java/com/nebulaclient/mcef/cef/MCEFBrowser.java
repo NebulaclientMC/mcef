@@ -23,29 +23,27 @@ package com.nebulaclient.mcef.cef;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.nebulaclient.mcef.MCEFPlatform;
+import com.nebulaclient.mcef.MCEF;
 import com.nebulaclient.mcef.glfw.MCEFGlfwCursorHelper;
 import com.nebulaclient.mcef.listeners.MCEFCursorChangeListener;
-import net.minecraft.client.MinecraftClient;
+
+
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefBrowserOsr;
+import org.cef.browser.CefMessageRouter;
 import org.cef.callback.CefDragData;
 import org.cef.event.CefKeyEvent;
 import org.cef.event.CefMouseEvent;
 import org.cef.event.CefMouseWheelEvent;
 import org.cef.misc.CefCursorType;
-import org.lwjgl.Sys;
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.Display;
-import org.lwjgl.opengl.GL;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.system.MemoryUtil;
-
+import org.lwjgl.BufferUtils;
 
 import java.awt.*;
 import java.nio.ByteBuffer;
 
-import static com.nebulaclient.mcef.MCEF.mc;
-import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 
 /**
@@ -91,12 +89,18 @@ public class MCEFBrowser extends CefBrowserOsr {
 
     private final boolean isMacOs = MCEFPlatform.getPlatform().isMacOS();
 
+    // Constants for GLFW key events - these don't exist in LWJGL 2.9
+    private static final int GLFW_PRESS = 1;
+    private static final int GLFW_RELEASE = 0;
+    private static final int GLFW_KEY_R = 82;
+    private static final int GLFW_MOD_CONTROL = 2;
+
     public MCEFBrowser(MCEFClient client, String url, boolean transparent, int frameRate) {
         super(client.getHandle(), url, transparent, null, new MCEFBrowserSettings(frameRate));
         renderer = new MCEFRenderer(transparent);
         cursorChangeListener = (cefCursorID) -> setCursor(CefCursorType.fromId(cefCursorID));
-
-        //RenderSystem.recordRenderCall(renderer::initialize);
+        // In 1.8.9, we need to initialize immediately since there's no RenderSystem
+        renderer.initialize();
     }
 
     public MCEFRenderer getRenderer() {
@@ -127,7 +131,7 @@ public class MCEFBrowser extends CefBrowserOsr {
     public void onPopupSize(CefBrowser browser, Rectangle size) {
         super.onPopupSize(browser, size);
         popupSize = size;
-        this.popupGraphics = ByteBuffer.allocateDirect(
+        this.popupGraphics = BufferUtils.createByteBuffer(
                 size.width * size.height * 4
         );
     }
@@ -135,92 +139,88 @@ public class MCEFBrowser extends CefBrowserOsr {
     // Graphics
     @Override
     public void onPaint(CefBrowser browser, boolean popup, Rectangle[] dirtyRects, ByteBuffer buffer, int width, int height) {
-        if (dirtyRects.length == 0 || renderer.getTextureID() == 0) {
+        // nothing to update
+        if (dirtyRects.length == 0) {
             return;
         }
-
-        System.out.println(renderer.getTextureID() + " text id");
-
-        GlStateManager.bindTexture(renderer.getTextureID());
 
         if (!popup) {
             if (lastWidth != width || lastHeight != height) {
                 lastWidth = width;
                 lastHeight = height;
-                fillBufferRed(buffer, width, height);
+                // upload full texture
+                // this also sets up the texture size and creates the texture
                 renderer.onPaint(buffer, width, height);
             } else {
+                if (renderer.getTextureID() == 0) return;
+                GlStateManager.bindTexture(renderer.getTextureID());
                 GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
                 for (Rectangle dirtyRect : dirtyRects) {
                     GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
                     GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
-                    fillBufferRed(buffer, dirtyRect.width, dirtyRect.height);
                     renderer.onPaint(buffer, dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
+                }
+                if ((popupDrawn || showPopup) && popupSize != null) {
+                    // interpret where the popup was as a dirty rect
+                    if (!showPopup) {
+                        // if the popup is not visible, just draw the contents of the buffer
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, popupSize.width);
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, popupSize.height);
+                        renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
+                        popupGraphics = null;
+                        popupSize = null;
+                    } else if (popupDrawn) {
+                        // else, a use copy of the popup graphics, as it needs to remain visible
+                        // and for some reason that I do not for the life of me understand, chromium does not seem to keep this data in memory outside of the paint loop, meaning it has to be copied around, which wastes performance
+                        GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+                        renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
+                    }
+                }
+            }
+        } else {
+            if (renderer.getTextureID() == 0) return;
+            GlStateManager.bindTexture(renderer.getTextureID());
+            int start = buffer.capacity();
+            int end = 0;
+            for (Rectangle dirtyRect : dirtyRects) {
+                GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
+                GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
+                GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
+                renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
+
+                int rectStart = (dirtyRect.x + ((dirtyRect.y) * popupSize.width)) << 2;
+                if (rectStart < start) start = rectStart;
+
+                int rectEnd = ((dirtyRect.x + dirtyRect.width) + ((dirtyRect.y + popupSize.height) * dirtyRect.width)) << 2;
+                if (rectEnd > end) end = rectEnd;
+            }
+            if (start < 0) start = 0;
+            if (end > buffer.capacity()) end = buffer.capacity();
+
+            if (end > start) {
+                // In 1.8.9 we don't have MemoryUtil, so we use a simple copy loop
+                if (this.popupGraphics != null) {
+                    // Create a copy of the region
+                    buffer.position(start);
+                    popupGraphics.position(start);
+
+                    // Copy byte by byte for the needed region
+                    byte[] tmp = new byte[end - start];
+                    buffer.get(tmp);
+                    popupGraphics.put(tmp);
+
+                    // Reset positions
+                    buffer.position(0);
+                    popupGraphics.position(0);
                 }
             }
 
-            if ((popupDrawn || showPopup) && popupSize != null) {
-                handlePopupPainting(buffer);
-            }
-        } else {
-            handlePopupBuffering(buffer, dirtyRects);
             popupDrawn = true;
         }
     }
 
-    private void handlePopupPainting(ByteBuffer buffer) {
-        if (!showPopup) {
-            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, popupSize.width);
-            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, popupSize.height);
-            fillBufferRed(buffer, popupSize.width, popupSize.height);
-            renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
-            popupGraphics = null;
-            popupSize = null;
-        } else if (popupDrawn) {
-            GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
-            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-            fillBufferRed(popupGraphics, popupSize.width, popupSize.height);
-            renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
-        }
-    }
-
-    private void handlePopupBuffering(ByteBuffer buffer, Rectangle[] dirtyRects) {
-        int start = buffer.capacity();
-        int end = 0;
-
-        for (Rectangle dirtyRect : dirtyRects) {
-            GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
-            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
-            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
-            fillBufferRed(buffer, dirtyRect.width, dirtyRect.height);
-            renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
-
-            int rectStart = (dirtyRect.x + (dirtyRect.y * popupSize.width)) << 2;
-            int rectEnd = ((dirtyRect.x + dirtyRect.width) + ((dirtyRect.y + popupSize.height) * dirtyRect.width)) << 2;
-
-            start = Math.min(start, rectStart);
-            end = Math.max(end, rectEnd);
-        }
-
-        if (start < end && popupGraphics != null) {
-            MemoryUtil.memCopy(
-                    MemoryUtil.memAddress(buffer) + start,
-                    MemoryUtil.memAddress(popupGraphics) + start,
-                    end - start
-            );
-        }
-    }
-
-    private void fillBufferRed(ByteBuffer buffer, int width, int height) {
-        int size = width * height * 4; // Assuming 4 bytes per pixel (RGBA)
-        for (int i = 0; i < size; i += 4) {
-            buffer.put(i, (byte) 255);  // Red
-            buffer.put(i + 1, (byte) 0); // Green
-            buffer.put(i + 2, (byte) 0); // Blue
-            buffer.put(i + 3, (byte) 255); // Alpha
-        }
-    }
     public void resize(int width, int height) {
         browser_rect_.setBounds(0, 0, width, height);
         wasResized(width, height);
@@ -278,7 +278,7 @@ public class MCEFBrowser extends CefBrowserOsr {
         }
 
         // Double click handling
-        var time = System.currentTimeMillis();
+        long time = System.currentTimeMillis();
         clicks = time - lastClickTime < 500 ? 2 : 1;
 
         sendMouseEvent(new CefMouseEvent(GLFW_PRESS, mouseX, mouseY, clicks, button, btnMask));
@@ -324,7 +324,7 @@ public class MCEFBrowser extends CefBrowserOsr {
             amount = amount * 3;
         }
 
-        var event = new CefMouseWheelEvent(CefMouseWheelEvent.WHEEL_UNIT_SCROLL, mouseX, mouseY, amount, 0);
+        CefMouseWheelEvent event = new CefMouseWheelEvent(CefMouseWheelEvent.WHEEL_UNIT_SCROLL, mouseX, mouseY, amount, 0);
         sendMouseWheelEvent(event);
     }
 
@@ -351,7 +351,7 @@ public class MCEFBrowser extends CefBrowserOsr {
     // Expose drag & drop functions
     public void startDragging(CefDragData dragData, int mask, int x, int y) {
         // Overload since the JCEF method requires a browser, which then goes unused
-        startDragging(dragData, mask, x, y);
+        startDragging(this, dragData, mask, x, y);
     }
 
     public void finishDragging(int x, int y) {
@@ -376,7 +376,7 @@ public class MCEFBrowser extends CefBrowserOsr {
 
     @Override
     protected void finalize() throws Throwable {
-        //RenderSystem.recordRenderCall(renderer::cleanup);
+        renderer.cleanup();
         super.finalize();
     }
 
@@ -389,12 +389,15 @@ public class MCEFBrowser extends CefBrowserOsr {
     }
 
     public void setCursor(CefCursorType cursorType) {
-        var windowHandle = Display.getHandle();
+        // In 1.8.9, we need to implement cursor handling differently
+        // We can't directly access GLFW window handles
 
         // We do not want to change the cursor state since Minecraft does this for us.
         if (cursorType == CefCursorType.NONE) return;
 
-        org.lwjgl.glfw.GLFW.glfwSetCursor(windowHandle, MCEFGlfwCursorHelper.getGLFWCursorHandle(cursorType));
+        // This would need to be implemented using the 1.8.9 mouse cursor handling
+        // Instead of GLFW cursor handling
+        //MCEFGlfwCursorHelper.setCursor(cursorType);
     }
 
     /**
@@ -412,5 +415,4 @@ public class MCEFBrowser extends CefBrowserOsr {
 
         return button;
     }
-
 }
