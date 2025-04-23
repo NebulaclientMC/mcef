@@ -17,22 +17,26 @@ public abstract class MinecraftClientMixin {
 
     @Shadow public abstract void setScreen(Screen screen);
 
+    @Shadow public Screen currentScreen;
+
+    @Shadow private static MinecraftClient instance;
+
     @Inject(method = "initializeGame",at = @At("HEAD"))
     public void init(CallbackInfo ci) {
-        System.setProperty("java.awt.headless", "true"); //Do not remove
+        //Looks like every mod needs to do this theirself
+        System.setProperty("java.awt.headless", "true");
     }
-    boolean toggeled = false;
 
     @Inject(method = "handleKeyInput",at = @At("RETURN"))
     public void init2(CallbackInfo ci) {
-        if(Keyboard.getEventKey() == Keyboard.KEY_I){
+        if (Keyboard.getEventKey() == Keyboard.KEY_I && currentScreen == null) {
             setScreen(new ExampleScreen());
         }
     }
 
     @Overwrite
     public int getMaxFramerate() {
-        return 200;
+        return MinecraftClient.getInstance().currentScreen instanceof ExampleScreen ? 200 : 60;
     }
 
 
