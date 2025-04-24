@@ -56,7 +56,5 @@ public class FabricMCEFMod implements ModInitializer {
 
 
         MCEF.INSTANCE.initialize();
-
-        // MCEF server-side does nothing
     }
 }

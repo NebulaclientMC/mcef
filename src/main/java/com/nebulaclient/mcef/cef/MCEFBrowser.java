@@ -330,6 +330,8 @@ public class MCEFBrowser extends CefBrowserOsr {
         this.mouseButton = 0;
     }
 
+
+    //TODO: Check if this is still required or can also make our scrolling better
     public void sendMouseWheel(int mouseX, int mouseY, double amount, int i) {
         // macOS generally has a slow scroll speed that feels more natural with their magic mice / trackpads
         if (!isMacOs) {

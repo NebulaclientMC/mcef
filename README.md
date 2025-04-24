@@ -3,6 +3,7 @@
 </p>
 
 # MCEF (Minecraft Chromium Embedded Framework for Nebula Client)
+#### MCEF for 1.8.9 (Legacy Fabric)
 
 A lightweight fork of MCEF designed specifically for integration with Nebula Client and other clients. This barebone library provides essential Chromium web browser functionality for Minecraft.
 
@@ -18,7 +19,7 @@ Current Chromium version: `122.0.6261.112`
 
 *Note: Some antivirus software may prevent MCEF from initializing. You may need to disable your antivirus or whitelist the mod files for proper functionality.
 
-**This library will not work on Android.
+!! **This library will not work on Android.** !!
 
 ## For Modders
 MCEF is LGPL, as long as your project doesn't modify or include MCEF source code, you can choose a different license. See the full license in the LICENSE file.

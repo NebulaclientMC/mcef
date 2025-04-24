@@ -24,13 +24,6 @@ import com.nebulaclient.mcef.cef.MCEFBrowser;
 public class ExampleScreen extends Screen {
     private static final int DRAW_OFFSET = 0;
 
-    private static final float SCROLL_FRICTION = 0.95f;       // Higher friction for smoother deceleration
-    private static final float SCROLL_SENSITIVITY = 1f;    // Lower sensitivity for shorter scroll distance
-    private static final float SCROLL_INERTIA = 0.9f;         // Slightly higher inertia for smoother continuation
-    private static final float MAX_SCROLL_VELOCITY = 15f;     // Lower max velocity to limit scroll distance
-    private static final float MIN_SCROLL_VELOCITY = 0.2f;    // Lower threshold to maintain smooth scrolling longer
-    private static final long SCROLL_TIMEOUT = 500;           // Longer timeout for more gradual decay
-
     // Instance variables
     private final MinecraftClient client = MinecraftClient.getInstance();
     private MCEFBrowser browser;
@@ -43,12 +36,18 @@ public class ExampleScreen extends Screen {
     private boolean isPressRight = false;
     private boolean isPressMiddle = false;
 
-    private float scrollVelocity = 0f;
-    private float lastScrollAmount = 0f;
-    private long lastScrollTime = 0;
-    private long lastFrameTime = 0;
-    private boolean isScrolling = false;
-    private float scrollRemainder = 0f;
+    // New smooth scrolling variables - built from scratch
+    private double scrollAccumulator = 0.0;
+    private double scrollVelocity = 0.0;
+    private long lastScrollEventTime = 0;
+    private long lastFrameTime = System.currentTimeMillis();
+    private boolean isInScrollingAnimation = false;
+
+    private static final double SCROLL_MULTIPLIER = 1;
+    private static final double SCROLL_FRICTION = 0.98;
+    private static final double SCROLL_MIN_VELOCITY = 0.1;
+    private static final double MAX_VELOCITY =5.0;
+    private static final long SCROLL_TIMEOUT = 100;
 
     private final boolean[] keyPressed = new boolean[Keyboard.KEYBOARD_SIZE];
 
@@ -121,64 +120,20 @@ public class ExampleScreen extends Screen {
     }
 
 
-    private void updateScrollPhysics(float delta) {
-        long currentTime = System.currentTimeMillis();
-        float deltaTime = (currentTime - lastFrameTime) / 16.67f;
-        if (deltaTime <= 0) deltaTime = 1;
-        if (deltaTime > 5) deltaTime = 5;
-
-        int scrollDelta = Mouse.getDWheel();
-        if (scrollDelta != 0) {
-            isScrolling = true;
-            lastScrollTime = currentTime;
-
-            float rawScrollInput = scrollDelta / 120.0f;
-            float adjustedDelta = rawScrollInput * SCROLL_SENSITIVITY;
-
-            if ((adjustedDelta < 0 && scrollVelocity > 0) ||
-                    (adjustedDelta > 0 && scrollVelocity < 0)) {
-                scrollVelocity *= 0.5f
-            }
-
-            scrollVelocity = scrollVelocity * SCROLL_INERTIA + adjustedDelta;
-
-            scrollVelocity = Math.max(Math.min(scrollVelocity, MAX_SCROLL_VELOCITY), -MAX_SCROLL_VELOCITY);
-            lastScrollAmount = adjustedDelta;
-        }
-
-        if (isScrolling) {
-            float timeMultiplier = 1.0f;
-            if (currentTime - lastScrollTime > SCROLL_TIMEOUT) {
-                timeMultiplier = 0.97f;
-            }
-
-            scrollVelocity *= Math.pow(SCROLL_FRICTION, deltaTime) * timeMultiplier;
-
-            if (Math.abs(scrollVelocity) < MIN_SCROLL_VELOCITY) {
-                scrollVelocity = 0;
-                isScrolling = false;
-                scrollRemainder = 0;
-            }
-
-            if (Math.abs(scrollVelocity) > 0) {
-                scrollRemainder += scrollVelocity;
-
-                int scrollAmount = (int)scrollRemainder;
-                if (scrollAmount != 0) {
-                    browser.sendMouseWheel(mouseX(prevMouseX), mouseY(prevMouseY), scrollAmount, 0);
-                    scrollRemainder -= scrollAmount;
-                }
-            }
-        }
-
-        lastFrameTime = currentTime;
-    }
     @Override
     public void render(int mouseX, int mouseY, float delta) {
         super.render(mouseX, mouseY, delta);
 
-        updateScrollPhysics(delta);
+        long currentTime = System.currentTimeMillis();
+        double deltaTime = (currentTime - lastFrameTime) / 1000.0;
+        lastFrameTime = currentTime;
 
+        // Cap deltaTime to prevent large jumps
+        if (deltaTime > 0.1) {
+            deltaTime = 0.1;
+        }
+
+        // Handle mouse movement
         if (prevMouseX != mouseX || prevMouseY != mouseY) {
             browser.sendMouseMove(mouseX(mouseX), mouseY(mouseY));
             prevMouseX = mouseX;
@@ -218,6 +173,9 @@ public class ExampleScreen extends Screen {
             isPressMiddle = false;
         }
 
+        //mouse wheel scrolling
+        handleSmoothScrolling(mouseX, mouseY, deltaTime);
+
         // Render browser content to texture
         browser.getRenderer().renderToTexture();
 
@@ -233,6 +191,49 @@ public class ExampleScreen extends Screen {
         GlStateManager.disableAlphaTest();
         GlStateManager.enableDepthTest();
         GlStateManager.popMatrix();
+    }
+
+    //This still needs work!
+    private void handleSmoothScrolling(int mouseX, int mouseY, double deltaTime) {
+        //This uses our custom lwjgl3 for 1.8.9
+        double wheelDelta = Mouse.getOriginalMouseEventWheel();
+        System.out.println(wheelDelta);
+        if (wheelDelta != 0.0) {
+            lastScrollEventTime = System.currentTimeMillis();
+            isInScrollingAnimation = true;
+
+            double scrollInput = wheelDelta * SCROLL_MULTIPLIER;
+
+            scrollVelocity += scrollInput;
+
+            if (scrollVelocity > MAX_VELOCITY) {
+                scrollVelocity = MAX_VELOCITY;
+            } else if (scrollVelocity < -MAX_VELOCITY) {
+                scrollVelocity = -MAX_VELOCITY;
+            }
+        }
+
+        if (isInScrollingAnimation) {
+            double frameScrollAmount = scrollVelocity * deltaTime * 60.0; //Todo: Use minecrafts fps i guess
+
+            scrollAccumulator += frameScrollAmount;
+
+            double scrollPixels = scrollAccumulator;
+            if (scrollPixels != 0) {
+                browser.sendMouseWheel(mouseX(mouseX), mouseY(mouseY), scrollPixels, 0);
+
+                scrollAccumulator -= scrollPixels;
+            }
+
+            scrollVelocity *= Math.pow(SCROLL_FRICTION, deltaTime * 60.0);
+
+            long timeSinceLastScroll = System.currentTimeMillis() - lastScrollEventTime;
+            if (Math.abs(scrollVelocity) < SCROLL_MIN_VELOCITY || timeSinceLastScroll > SCROLL_TIMEOUT) {
+                scrollVelocity = 0.0;
+                scrollAccumulator = 0.0;
+                isInScrollingAnimation = false;
+            }
+        }
     }
 
     @Override

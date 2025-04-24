@@ -23,7 +23,6 @@ public abstract class MinecraftClientMixin {
 
     @Inject(method = "initializeGame",at = @At("HEAD"))
     public void init(CallbackInfo ci) {
-        //Looks like every mod needs to do this theirself
         System.setProperty("java.awt.headless", "true");
     }
 
