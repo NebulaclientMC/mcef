@@ -23,6 +23,8 @@ package com.nebulaclient.mcef;
 import com.google.gson.Gson;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.nebulaclient.mcef.cef.MCEFBrowser;
+import com.nebulaclient.mcef.messaging.MessageProvider;
+import com.nebulaclient.mcef.messaging.channel.MessageChannel;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -52,6 +54,11 @@ public class ExampleScreen extends Screen {
 
     protected ExampleScreen() {
         super(Text.of("MCEF/"+UUID.randomUUID().toString().split("-")[0]));
+
+        MessageProvider prv = new MessageProvider();
+        MessageChannel channel = new MessageChannel();
+
+        prv.openChannel(new MessageChannel());
     }
     private final Gson gson = new Gson();
 

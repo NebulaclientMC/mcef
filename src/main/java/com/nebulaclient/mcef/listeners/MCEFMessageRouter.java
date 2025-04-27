@@ -2,10 +2,6 @@ package com.nebulaclient.mcef.listeners;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nebulaclient.mcef.messaging.MessageReceiver;
-import com.nebulaclient.mcef.messaging.QueryMessageData;
-import com.nebulaclient.mcef.messaging.QueryMessageManager;
-import com.nebulaclient.mcef.messaging.QueryMessageResult;
 import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
 import org.cef.callback.CefQueryCallback;
