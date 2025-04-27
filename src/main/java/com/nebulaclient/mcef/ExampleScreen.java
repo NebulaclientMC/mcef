@@ -59,7 +59,7 @@ public class ExampleScreen extends Screen {
     public void init() {
         super.init();
         if (browser == null) {
-            String url = "http://127.0.0.1:3000/ui/performanceTest.html";
+            String url = "http://localhost:3000/";
             boolean transparent = true;
 
             browser = MCEF.INSTANCE.createBrowser(url, transparent, 1000);
@@ -197,7 +197,6 @@ public class ExampleScreen extends Screen {
     private void handleSmoothScrolling(int mouseX, int mouseY, double deltaTime) {
         //This uses our custom lwjgl3 for 1.8.9
         double wheelDelta = Mouse.getOriginalMouseEventWheel();
-        System.out.println(wheelDelta);
         if (wheelDelta != 0.0) {
             lastScrollEventTime = System.currentTimeMillis();
             isInScrollingAnimation = true;
@@ -220,7 +219,7 @@ public class ExampleScreen extends Screen {
 
             double scrollPixels = scrollAccumulator;
             if (scrollPixels != 0) {
-                browser.sendMouseWheel(mouseX(mouseX), mouseY(mouseY), scrollPixels, 0);
+                browser.sendMouseWheel(mouseX(mouseX), mouseY(mouseY),wheelDelta, 0);
 
                 scrollAccumulator -= scrollPixels;
             }

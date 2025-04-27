@@ -40,7 +40,8 @@ public class MCEFSettings {
             "--autoplay-policy=no-user-gesture-required",
             "--disable-web-security",
             "--enable-widevine-cdm",
-            "--off-screen-rendering-enabled"
+            "--off-screen-rendering-enabled",
+            "--enable-smooth-scrolling"
     );
     private File cacheDirectory = null;
     private File librariesDirectory = null;
