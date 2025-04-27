@@ -11,33 +11,7 @@ public class MCEFMessageRouter implements CefMessageRouterHandler {
 
     @Override
     public boolean onQuery(CefBrowser browser, CefFrame frame, long queryId, String request, boolean persistent, CefQueryCallback callback) {
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            JsonNode jsonNode = objectMapper.readTree(request);
-
-            String extractedQueryId = jsonNode.has("queryId") ? jsonNode.get("queryId").asText() : null;
-
-            if (extractedQueryId == null) {
-                callback.failure(1, "queryId is missing");
-                return false;
-            }
-
-            MessageReceiver message = QueryMessageManager.getMessage(extractedQueryId);
-            QueryMessageResult result = message.onMessage(new QueryMessageData(request));
-
-            if (result.state == QueryMessageResult.QueryResultState.FAILTURE) {
-                callback.failure(0, result.response);
-                return false;
-            } else if (result.state == QueryMessageResult.QueryResultState.SUCCESS) {
-                callback.success(result.response);
-                return true;
-            }else{
-                return true;
-            }
-        } catch (Exception e) {
-            callback.failure(2, "Invalid JSON format");
-            return false;
-        }
+        return false;
     }
 
 
