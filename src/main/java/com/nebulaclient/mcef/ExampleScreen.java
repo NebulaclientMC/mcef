@@ -20,6 +20,7 @@
 
 package com.nebulaclient.mcef;
 
+import com.google.gson.Gson;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.nebulaclient.mcef.cef.MCEFBrowser;
 import net.minecraft.client.MinecraftClient;
@@ -52,17 +53,19 @@ public class ExampleScreen extends Screen {
     protected ExampleScreen() {
         super(Text.of("MCEF/"+UUID.randomUUID().toString().split("-")[0]));
     }
+    private final Gson gson = new Gson();
+
+
 
     @Override
     protected void init() {
         super.init();
         if (browser == null) {
-            String url = "http://127.0.0.1:3000/ui/performanceTest.html";
+            String url = "http://127.0.0.1:3000/";
             boolean transparent = true;
 
-            browser = MCEF.INSTANCE.createBrowser(url, transparent, 1000);
+            browser = MCEF.INSTANCE.createBrowser(url, transparent, 240);
             texture = Identifier.of("mcef" , "browser/tab/" + browser.hashCode());
-
 
             minecraft.getTextureManager().registerTexture(texture, new AbstractTexture() {
                 @Override
@@ -120,6 +123,8 @@ public class ExampleScreen extends Screen {
         guiGraphics.drawTexture(BLURRED_TEXTURE_LAYER, texture, 0, 0, 0f, 0f, width - 0,
                height - 0, width - 0,height - 0);
         RenderSystem.enableDepthTest();
+        System.err.println("H");
+        Gson gson = new Gson();
     }
 
     private static final Function<Identifier, RenderLayer> BLURRED_TEXTURE_LAYER = Util.memoize(textureId -> RenderLayer.of("blurred_ui_layer", VertexFormats.POSITION_TEXTURE_COLOR, VertexFormat.DrawMode.QUADS, 786432, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(textureId, TriState.FALSE, false)).transparency(JCEF_BLEND).program(RenderPhase.POSITION_TEXTURE_COLOR_PROGRAM).depthTest(RenderPhase.LEQUAL_DEPTH_TEST).target(RenderPhase.MAIN_TARGET).build(false)));

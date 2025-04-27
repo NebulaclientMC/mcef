@@ -2,7 +2,7 @@ package com.nebulaclient.mcef.listeners;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nebulaclient.mcef.messaging.QueryMessage;
+import com.nebulaclient.mcef.messaging.MessageReceiver;
 import com.nebulaclient.mcef.messaging.QueryMessageData;
 import com.nebulaclient.mcef.messaging.QueryMessageManager;
 import com.nebulaclient.mcef.messaging.QueryMessageResult;
@@ -10,8 +10,6 @@ import org.cef.browser.CefBrowser;
 import org.cef.browser.CefFrame;
 import org.cef.callback.CefQueryCallback;
 import org.cef.handler.CefMessageRouterHandler;
-
-import javax.management.Query;
 
 public class MCEFMessageRouter implements CefMessageRouterHandler {
 
@@ -28,7 +26,7 @@ public class MCEFMessageRouter implements CefMessageRouterHandler {
                 return false;
             }
 
-            QueryMessage message = QueryMessageManager.getMessage(extractedQueryId);
+            MessageReceiver message = QueryMessageManager.getMessage(extractedQueryId);
             QueryMessageResult result = message.onMessage(new QueryMessageData(request));
 
             if (result.state == QueryMessageResult.QueryResultState.FAILTURE) {

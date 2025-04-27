@@ -1,19 +1,22 @@
 package com.nebulaclient.mcef.messaging;
 
+import com.nebulaclient.mcef.MCEF;
+import org.spongepowered.asm.util.logging.MessageRouter;
+
 import java.util.ArrayList;
 import java.util.Objects;
 
 
 /***
  * @apiNote Receive messages from JavaScript. Create a new QueryMessage and register it
- * @see QueryMessage
+ * @see MessageReceiver
  */
 public class QueryMessageManager {
 
-    private static final ArrayList<QueryMessage> messages = new ArrayList<QueryMessage>();
+    private static final ArrayList<MessageReceiver> messages = new ArrayList<MessageReceiver>();
 
-    public static void registerMessage(QueryMessage message) {
-        for (QueryMessage m : messages) {
+    public static void listen(MessageReceiver message) {
+        for (MessageReceiver m : messages) {
             if (Objects.equals(m.queryId, message.queryId)) {
                 System.err.println("[JCEF/Query] You have already registered an message with this queryId. Please change it and try again!");
                 return;
@@ -23,8 +26,12 @@ public class QueryMessageManager {
     }
 
 
-    public static QueryMessage getMessage(String queryId) {
-        for (QueryMessage m : messages) {
+    public static void emit(SendingMessage sendingMessage) {
+
+    }
+
+    public static MessageReceiver getMessage(String queryId) {
+        for (MessageReceiver m : messages) {
             if (Objects.equals(m.queryId, queryId)) {
                 return m;
             }
@@ -32,7 +39,7 @@ public class QueryMessageManager {
         return null;
     }
 
-    public static ArrayList<QueryMessage> getMessages() {
+    public static ArrayList<MessageReceiver> getMessages() {
         return messages;
     }
 }

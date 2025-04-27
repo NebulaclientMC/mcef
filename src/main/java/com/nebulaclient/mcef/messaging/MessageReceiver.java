@@ -1,16 +1,13 @@
 package com.nebulaclient.mcef.messaging;
 
-public abstract class QueryMessage {
+public abstract class MessageReceiver {
 
     public String queryId;
 
-    public QueryMessage(String queryId) {
+    public MessageReceiver(String queryId) {
         this.queryId = queryId;
     }
 
-
     public abstract QueryMessageResult onMessage(QueryMessageData data);
-    public abstract QueryMessageResult send(QueryMessageData data);
-
 
 }

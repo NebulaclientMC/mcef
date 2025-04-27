@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 
 /**
  * An API to create Chromium web browsers in Minecraft. Uses
@@ -46,6 +47,8 @@ public enum MCEF {
     private MCEFApp app;
     private MCEFClient client;
     private MCEFDownloadManager resourceManager;
+
+    private ArrayList<MCEFBrowser> browsers = new ArrayList<>();
     
     public Logger getLogger() {
         return LOGGER;
@@ -130,6 +133,7 @@ public enum MCEF {
         MCEFBrowser browser = new MCEFBrowser(client, url, transparent, frameRate);
         browser.setCloseAllowed();
         browser.createImmediately();
+        this.browsers.add(browser);
         return browser;
     }
 
@@ -192,4 +196,11 @@ public enum MCEF {
         return null;
     }
 
+    public ArrayList<MCEFBrowser> getBrowsers() {
+        return browsers;
+    }
+
+    public void setBrowsers(ArrayList<MCEFBrowser> browsers) {
+        this.browsers = browsers;
+    }
 }
