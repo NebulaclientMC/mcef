@@ -10,6 +10,7 @@ public abstract class QueryMessage {
 
 
     public abstract QueryMessageResult onMessage(QueryMessageData data);
+    public abstract QueryMessageResult send(QueryMessageData data);
 
 
 }
