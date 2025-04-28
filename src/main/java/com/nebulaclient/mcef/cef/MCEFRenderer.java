@@ -34,6 +34,11 @@ public class MCEFRenderer {
     private int textureID = 0;
     private boolean unpainted = true;
 
+    private static final int DEFAULT_WIDTH = 1;
+    private static final int DEFAULT_HEIGHT = 1;
+
+    private static final byte[] TRANSPARENT_PIXELS = new byte[] {0, 0, 0, 0};
+
     protected MCEFRenderer(boolean transparent) {
         this.transparent = transparent;
     }
@@ -43,6 +48,18 @@ public class MCEFRenderer {
         GlStateManager.bindTexture(textureID);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        ByteBuffer initialData = ByteBuffer.allocateDirect(4);
+        if (transparent) {
+            initialData.put(TRANSPARENT_PIXELS);
+        } else {
+            initialData.put(new byte[] {0, 0, 0, (byte)255});
+        }
+        initialData.flip();
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, DEFAULT_WIDTH, DEFAULT_HEIGHT, 0,
+                GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, initialData);
+
         GlStateManager.bindTexture(0);
         unpainted = true;
     }
@@ -88,15 +105,30 @@ public class MCEFRenderer {
                 GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
         unpainted = false;
 
+        if (transparent) {
+            GlStateManager.disableBlend();
+        }
         GlStateManager.popMatrix();
     }
 
     protected void onPaint(ByteBuffer buffer, int x, int y, int width, int height) {
+        if (textureID == 0) {
+            return;
+        }
+
         GlStateManager.pushMatrix();
+        if (transparent) {
+            GlStateManager.enableBlend();
+        }
+
         GlStateManager.bindTexture(textureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA,
                 GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
         unpainted = false;
+
+        if (transparent) {
+            GlStateManager.disableBlend();
+        }
         GlStateManager.popMatrix();
     }
 }

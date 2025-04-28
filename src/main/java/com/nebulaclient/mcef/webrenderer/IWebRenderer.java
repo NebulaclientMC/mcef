@@ -1,9 +1,17 @@
 package com.nebulaclient.mcef.webrenderer;
 
-public interface IWebRenderer {
+public interface IWebRenderer
+{
 
-    void drawAll();
-    void createFrameInteractive();
-    void createFrame();
+    void makeDependenciesAvailable();
+
+    void start();
+
+    void stop();
+
+    boolean isInitialized();
+
+    void render();
+
 
 }
