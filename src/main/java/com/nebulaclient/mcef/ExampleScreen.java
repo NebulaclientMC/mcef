@@ -36,20 +36,6 @@ public class ExampleScreen extends Screen {
     private boolean isPressRight = false;
     private boolean isPressMiddle = false;
 
-    // New smooth scrolling variables - built from scratch
-    private double scrollAccumulator = 0.0;
-    private double scrollVelocity = 0.0;
-    private long lastScrollEventTime = 0;
-    private long lastFrameTime = System.currentTimeMillis();
-    private boolean isInScrollingAnimation = false;
-
-    private static final double SCROLL_MULTIPLIER = 1;
-    private static final double SCROLL_FRICTION = 0.98;
-    private static final double SCROLL_MIN_VELOCITY = 0.1;
-    private static final double MAX_VELOCITY =5.0;
-    private static final long SCROLL_TIMEOUT = 100;
-
-    private final boolean[] keyPressed = new boolean[Keyboard.KEYBOARD_SIZE];
 
     public ExampleScreen() {
         super();
@@ -124,14 +110,8 @@ public class ExampleScreen extends Screen {
     public void render(int mouseX, int mouseY, float delta) {
         super.render(mouseX, mouseY, delta);
 
-        long currentTime = System.currentTimeMillis();
-        double deltaTime = (currentTime - lastFrameTime) / 1000.0;
-        lastFrameTime = currentTime;
-
-        // Cap deltaTime to prevent large jumps
-        if (deltaTime > 0.1) {
-            deltaTime = 0.1;
-        }
+        double mouseRaw = Mouse.getOriginalMouseEventWheel();
+        browser.sendMouseWheel(mouseX(Mouse.getX()), mouseY(Mouse.getY()),mouseRaw,0);
 
         // Handle mouse movement
         if (prevMouseX != mouseX || prevMouseY != mouseY) {
@@ -173,8 +153,6 @@ public class ExampleScreen extends Screen {
             isPressMiddle = false;
         }
 
-        //mouse wheel scrolling
-        handleSmoothScrolling(mouseX, mouseY, deltaTime);
 
         // Render browser content to texture
         browser.getRenderer().renderToTexture();
@@ -193,47 +171,6 @@ public class ExampleScreen extends Screen {
         GlStateManager.popMatrix();
     }
 
-    //This still needs work!
-    private void handleSmoothScrolling(int mouseX, int mouseY, double deltaTime) {
-        //This uses our custom lwjgl3 for 1.8.9
-        double wheelDelta = Mouse.getOriginalMouseEventWheel();
-        if (wheelDelta != 0.0) {
-            lastScrollEventTime = System.currentTimeMillis();
-            isInScrollingAnimation = true;
-
-            double scrollInput = wheelDelta * SCROLL_MULTIPLIER;
-
-            scrollVelocity += scrollInput;
-
-            if (scrollVelocity > MAX_VELOCITY) {
-                scrollVelocity = MAX_VELOCITY;
-            } else if (scrollVelocity < -MAX_VELOCITY) {
-                scrollVelocity = -MAX_VELOCITY;
-            }
-        }
-
-        if (isInScrollingAnimation) {
-            double frameScrollAmount = scrollVelocity * deltaTime * 60.0; //Todo: Use minecrafts fps i guess
-
-            scrollAccumulator += frameScrollAmount;
-
-            double scrollPixels = scrollAccumulator;
-            if (scrollPixels != 0) {
-                browser.sendMouseWheel(mouseX(mouseX), mouseY(mouseY),wheelDelta, 0);
-
-                scrollAccumulator -= scrollPixels;
-            }
-
-            scrollVelocity *= Math.pow(SCROLL_FRICTION, deltaTime * 60.0);
-
-            long timeSinceLastScroll = System.currentTimeMillis() - lastScrollEventTime;
-            if (Math.abs(scrollVelocity) < SCROLL_MIN_VELOCITY || timeSinceLastScroll > SCROLL_TIMEOUT) {
-                scrollVelocity = 0.0;
-                scrollAccumulator = 0.0;
-                isInScrollingAnimation = false;
-            }
-        }
-    }
 
     @Override
     public void mouseClicked(int mouseX, int mouseY, int button) {
@@ -247,7 +184,7 @@ public class ExampleScreen extends Screen {
 
     @Override
     public void handleMouse() {
-        super.handleMouse();
+
     }
 
     @Override
