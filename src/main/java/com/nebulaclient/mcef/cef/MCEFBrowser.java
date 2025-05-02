@@ -142,8 +142,11 @@ public class MCEFBrowser extends CefBrowserOsr {
             return;
         }
 
-        GlStateManager.pushMatrix();
-        GlStateManager.pushLightingAttributes();
+        GL11.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_ENABLE_BIT | GL11.GL_TEXTURE_BIT);
+        GL11.glPushMatrix();
+
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
         int[] origPackAlignment = new int[1];
         int[] origUnpackRowLength = new int[1];
@@ -155,90 +158,83 @@ public class MCEFBrowser extends CefBrowserOsr {
         GL11.glGetIntegerv(GL11.GL_UNPACK_SKIP_PIXELS, origUnpackSkipPixels);
         GL11.glGetIntegerv(GL11.GL_UNPACK_SKIP_ROWS, origUnpackSkipRows);
 
-        GlStateManager.enableBlend();
-        GlStateManager.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         try {
             if (!popup) {
                 if (lastWidth != width || lastHeight != height) {
                     lastWidth = width;
                     lastHeight = height;
-
                     renderer.onPaint(buffer, width, height);
                 } else {
                     if (renderer.getTextureID() == 0) return;
-                    GlStateManager.bindTexture(renderer.getTextureID());
-                    GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+
+                    GL11.glBindTexture(GL11.GL_TEXTURE_2D, renderer.getTextureID());
+                    GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, width);
+
                     for (Rectangle dirtyRect : dirtyRects) {
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
-                        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
+                        GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
+                        GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, dirtyRect.y);
                         renderer.onPaint(buffer, dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
                     }
+
                     if ((popupDrawn || showPopup) && popupSize != null) {
-                        // interpret where the popup was as a dirty rect
                         if (!showPopup) {
-                            // if the popup is not visible, just draw the contents of the buffer
-                            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, popupSize.width);
-                            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, popupSize.height);
+                            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, popupSize.width);
+                            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, popupSize.height);
                             renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
                             popupGraphics = null;
                             popupSize = null;
                         } else if (popupDrawn) {
-                            // else, a use copy of the popup graphics, as it needs to remain visible
-                            GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
-                            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-                            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+                            GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, popupSize.width);
+                            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+                            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
                             renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
                         }
                     }
                 }
             } else {
                 if (renderer.getTextureID() == 0) return;
-                GlStateManager.bindTexture(renderer.getTextureID());
+
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, renderer.getTextureID());
                 int start = buffer.capacity();
                 int end = 0;
+
                 for (Rectangle dirtyRect : dirtyRects) {
-                    GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, popupSize.width);
-                    GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
-                    GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, dirtyRect.y);
+                    GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, popupSize.width);
+                    GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
+                    GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, dirtyRect.y);
                     renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
 
-                    int rectStart = (dirtyRect.x + ((dirtyRect.y) * popupSize.width)) << 2;
-                    if (rectStart < start) start = rectStart;
-
+                    int rectStart = (dirtyRect.x + dirtyRect.y * popupSize.width) << 2;
                     int rectEnd = ((dirtyRect.x + dirtyRect.width) + ((dirtyRect.y + popupSize.height) * dirtyRect.width)) << 2;
+
+                    if (rectStart < start) start = rectStart;
                     if (rectEnd > end) end = rectEnd;
                 }
+
                 if (start < 0) start = 0;
                 if (end > buffer.capacity()) end = buffer.capacity();
 
-                if (end > start) {
-                    // In 1.8.9 we don't have MemoryUtil, so we use a simple copy loop
-                    if (this.popupGraphics != null) {
-                        long addrFrom = MemoryUtil.memAddress(buffer);
-                        long addrTo = MemoryUtil.memAddress(popupGraphics);
-                        MemoryUtil.memCopy(
-                                addrFrom + start,
-                                addrTo + start,
-                                (end - start)
-                        );
-                    }
+                if (end > start && popupGraphics != null) {
+                    long addrFrom = MemoryUtil.memAddress(buffer);
+                    long addrTo = MemoryUtil.memAddress(popupGraphics);
+                    MemoryUtil.memCopy(addrFrom + start, addrTo + start, end - start);
                 }
 
                 popupDrawn = true;
             }
         } finally {
-            // Restore
-            GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, origUnpackRowLength[0]);
-            GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, origUnpackSkipPixels[0]);
-            GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, origUnpackSkipRows[0]);
+            // Restore pixel storage parameters
+            GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, origUnpackRowLength[0]);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, origUnpackSkipPixels[0]);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, origUnpackSkipRows[0]);
             GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, origPackAlignment[0]);
 
-            // Release
-            GlStateManager.bindTexture(0);
+            // Unbind texture
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
-            // Restore
-            GlStateManager.popAttributes();
-            GlStateManager.popMatrix();
+            // Restore OpenGL state
+            GL11.glPopMatrix();
+            GL11.glPopAttrib();
         }
     }
 

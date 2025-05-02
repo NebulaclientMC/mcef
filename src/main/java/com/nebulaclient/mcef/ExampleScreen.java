@@ -21,6 +21,9 @@ import java.io.IOException;
 
 import com.nebulaclient.mcef.cef.MCEFBrowser;
 
+import static org.lwjgl.opengl.GL11.*;
+import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
+
 public class ExampleScreen extends Screen {
     private static final int DRAW_OFFSET = 0;
 
@@ -161,11 +164,14 @@ public class ExampleScreen extends Screen {
         GlStateManager.pushMatrix();
         GlStateManager.disableDepthTest();
         GlStateManager.enableBlend();
+        GlStateManager.blendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
         GlStateManager.enableAlphaTest();
+        GlStateManager.alphaFunc(GL_GREATER, 0.001f);
 
         client.getTextureManager().bindTexture(texture);
         Screen.drawTexture(0, 0, 0, 0, width, height, width, height);
 
+        GlStateManager.alphaFunc(GL_GREATER, 0.1f);
         GlStateManager.disableAlphaTest();
         GlStateManager.enableDepthTest();
         GlStateManager.popMatrix();
