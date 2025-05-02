@@ -155,6 +155,8 @@ public class MCEFBrowser extends CefBrowserOsr {
         GL11.glGetIntegerv(GL11.GL_UNPACK_SKIP_PIXELS, origUnpackSkipPixels);
         GL11.glGetIntegerv(GL11.GL_UNPACK_SKIP_ROWS, origUnpackSkipRows);
 
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         try {
             if (!popup) {
                 if (lastWidth != width || lastHeight != height) {

@@ -93,9 +93,11 @@ public class MCEFRenderer {
         }
 
         GlStateManager.pushMatrix();
-        if (transparent) {
-            GlStateManager.enableBlend();
-        }
+
+        GlStateManager.enableBlend();
+        GlStateManager.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
 
         GlStateManager.bindTexture(textureID);
         GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
@@ -105,9 +107,8 @@ public class MCEFRenderer {
                 GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
         unpainted = false;
 
-        if (transparent) {
             GlStateManager.disableBlend();
-        }
+
         GlStateManager.popMatrix();
     }
 
@@ -117,18 +118,19 @@ public class MCEFRenderer {
         }
 
         GlStateManager.pushMatrix();
-        if (transparent) {
+
             GlStateManager.enableBlend();
-        }
+            GlStateManager.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            GL11.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 
         GlStateManager.bindTexture(textureID);
         glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA,
                 GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
         unpainted = false;
 
-        if (transparent) {
             GlStateManager.disableBlend();
-        }
+
         GlStateManager.popMatrix();
     }
 }

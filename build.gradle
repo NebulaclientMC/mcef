@@ -31,7 +31,10 @@ def getCheckedOutGitCommitHash(Project mcefParent) {
     }
 }
 
+
 tasks.register('cloneJcef', Exec) {
+    print(getCheckedOutGitCommitHash(project))
+
     commandLine 'git', 'submodule', 'update', '--init', '--recursive', 'java-cef'
 }
 
