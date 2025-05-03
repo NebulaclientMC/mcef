@@ -14,6 +14,9 @@ public class MCEFRenderer {
     private int textureID = 0;
     private boolean unpainted = true;
 
+    private int currentWidth = 1;
+    private int currentHeight = 1;
+
     private static final int DEFAULT_WIDTH = 1;
     private static final int DEFAULT_HEIGHT = 1;
 
@@ -24,10 +27,18 @@ public class MCEFRenderer {
     }
 
     public void initialize() {
+        if (textureID != 0) {
+            glDeleteTextures(textureID);
+        }
+
         textureID = glGenTextures();
         GlStateManager.bindTexture(textureID);
+
+        // Set texture params
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
         ByteBuffer initialData = ByteBuffer.allocateDirect(4);
         if (transparent) {
@@ -41,6 +52,8 @@ public class MCEFRenderer {
                 GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, initialData);
 
         GlStateManager.bindTexture(0);
+        currentWidth = DEFAULT_WIDTH;
+        currentHeight = DEFAULT_HEIGHT;
         unpainted = true;
     }
 
@@ -56,6 +69,14 @@ public class MCEFRenderer {
         return transparent;
     }
 
+    public int getCurrentWidth() {
+        return currentWidth;
+    }
+
+    public int getCurrentHeight() {
+        return currentHeight;
+    }
+
     protected void cleanup() {
         if (textureID != 0) {
             glDeleteTextures(textureID);
@@ -69,25 +90,41 @@ public class MCEFRenderer {
 
     protected void onPaint(ByteBuffer buffer, int width, int height) {
         if (textureID == 0) {
-            return;
+            initialize();
         }
 
         GlStateManager.pushMatrix();
 
-        GlStateManager.enableBlend();
-        GlStateManager.blendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+        try {
+            GlStateManager.bindTexture(textureID);
 
-        GlStateManager.bindTexture(textureID);
-        GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
-        GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
-        GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
-                GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
-        unpainted = false;
+            boolean dimensionsChanged = width != currentWidth || height != currentHeight;
 
-        GlStateManager.disableBlend();
+            if (dimensionsChanged) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0,
+                        GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+                currentWidth = width;
+                currentHeight = height;
+            } else {
+                GL11.glPixelStorei(GL_UNPACK_ROW_LENGTH, width);
+                GL11.glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+                GL11.glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
+                        GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            }
 
-        GlStateManager.popMatrix();
+            GlStateManager.enableBlend();
+            GlStateManager.blendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+            unpainted = false;
+
+            GlStateManager.disableBlend();
+        } catch (Exception e) {
+            MCEF.INSTANCE.getLogger().error("Error updating browser texture", e);
+        } finally {
+            GlStateManager.bindTexture(0);
+            GlStateManager.popMatrix();
+        }
     }
 
     protected void onPaint(ByteBuffer buffer, int x, int y, int width, int height) {
@@ -95,19 +132,27 @@ public class MCEFRenderer {
             return;
         }
 
-        GlStateManager.pushMatrix();
+        //No painting outside, don't remember if this is the only reason it looked weird before
+        if (x + width > currentWidth || y + height > currentHeight) {
+            return;
+        }
 
-        GlStateManager.bindTexture(textureID);
+        try {
+            GlStateManager.pushMatrix();
+            GlStateManager.bindTexture(textureID);
 
-        GlStateManager.enableBlend();
-        GlStateManager.blendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            GlStateManager.enableBlend();
+            GlStateManager.blendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-        glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA,
-                GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
-        unpainted = false;
+            glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_BGRA,
+                    GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            unpainted = false;
 
-        GlStateManager.disableBlend();
-
-        GlStateManager.popMatrix();
+            GlStateManager.disableBlend();
+            GlStateManager.bindTexture(0);
+            GlStateManager.popMatrix();
+        } catch (Exception e) {
+            MCEF.INSTANCE.getLogger().error("Error updating browser texture region", e);
+        }
     }
 }

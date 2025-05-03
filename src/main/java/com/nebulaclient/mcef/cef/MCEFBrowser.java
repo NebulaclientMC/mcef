@@ -54,6 +54,8 @@ import static org.lwjgl.opengl.GL11.*;
  * An instance of an "Off-screen rendered" Chromium web browser.
  * Complete with a renderer, keyboard and mouse inputs, optional
  * browser control shortcuts, cursor handling, drag & drop support.
+ *
+ * Rewritten @NebulaclientMC aka. Nebula Client
  */
 public class MCEFBrowser extends CefBrowserOsr {
     /**
@@ -92,8 +94,6 @@ public class MCEFBrowser extends CefBrowserOsr {
     private int mouseButton;
 
     private final boolean isMacOs = MCEFPlatform.getPlatform().isMacOS();
-
-    // Constants for GLFW key events - these don't exist in LWJGL 2.9
 
     public MCEFBrowser(MCEFClient client, String url, boolean transparent, int frameRate) {
         super(client.getHandle(), url, transparent, null, new MCEFBrowserSettings(frameRate));
@@ -135,19 +135,17 @@ public class MCEFBrowser extends CefBrowserOsr {
         );
     }
 
-    // Graphics
     @Override
     public void onPaint(CefBrowser browser, boolean popup, Rectangle[] dirtyRects, ByteBuffer buffer, int width, int height) {
-        if (dirtyRects.length == 0) {
+        if (dirtyRects.length == 0 || width <= 0 || height <= 0 || buffer == null) {
             return;
         }
 
+        // Save state
         GL11.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_ENABLE_BIT | GL11.GL_TEXTURE_BIT);
         GL11.glPushMatrix();
 
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-
+        // Save pixel storage parameters
         int[] origPackAlignment = new int[1];
         int[] origUnpackRowLength = new int[1];
         int[] origUnpackSkipPixels = new int[1];
@@ -165,63 +163,37 @@ public class MCEFBrowser extends CefBrowserOsr {
                     lastHeight = height;
                     renderer.onPaint(buffer, width, height);
                 } else {
-                    if (renderer.getTextureID() == 0) return;
+                    if (renderer.getTextureID() == 0) {
+                        renderer.onPaint(buffer, width, height);
+                        return;
+                    }
 
                     GL11.glBindTexture(GL11.GL_TEXTURE_2D, renderer.getTextureID());
                     GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, width);
 
                     for (Rectangle dirtyRect : dirtyRects) {
+                        if (dirtyRect.width <= 0 || dirtyRect.height <= 0) continue;
+
+                        if (dirtyRect.x >= width || dirtyRect.y >= height) continue;
+
+                        int rectWidth = Math.min(dirtyRect.width, width - dirtyRect.x);
+                        int rectHeight = Math.min(dirtyRect.height, height - dirtyRect.y);
+
                         GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
                         GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, dirtyRect.y);
-                        renderer.onPaint(buffer, dirtyRect.x, dirtyRect.y, dirtyRect.width, dirtyRect.height);
+
+                        renderer.onPaint(buffer, dirtyRect.x, dirtyRect.y, rectWidth, rectHeight);
                     }
 
-                    if ((popupDrawn || showPopup) && popupSize != null) {
-                        if (!showPopup) {
-                            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, popupSize.width);
-                            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, popupSize.height);
-                            renderer.onPaint(buffer, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
-                            popupGraphics = null;
-                            popupSize = null;
-                        } else if (popupDrawn) {
-                            GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, popupSize.width);
-                            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
-                            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
-                            renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, popupSize.width, popupSize.height);
-                        }
-                    }
+                    // Handle popup
+                    processPopup(buffer, width);
                 }
-            } else {
-                if (renderer.getTextureID() == 0) return;
-
-                GL11.glBindTexture(GL11.GL_TEXTURE_2D, renderer.getTextureID());
-                int start = buffer.capacity();
-                int end = 0;
-
-                for (Rectangle dirtyRect : dirtyRects) {
-                    GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, popupSize.width);
-                    GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, dirtyRect.x);
-                    GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, dirtyRect.y);
-                    renderer.onPaint(buffer, popupSize.x + dirtyRect.x, popupSize.y + dirtyRect.y, dirtyRect.width, dirtyRect.height);
-
-                    int rectStart = (dirtyRect.x + dirtyRect.y * popupSize.width) << 2;
-                    int rectEnd = ((dirtyRect.x + dirtyRect.width) + ((dirtyRect.y + popupSize.height) * dirtyRect.width)) << 2;
-
-                    if (rectStart < start) start = rectStart;
-                    if (rectEnd > end) end = rectEnd;
-                }
-
-                if (start < 0) start = 0;
-                if (end > buffer.capacity()) end = buffer.capacity();
-
-                if (end > start && popupGraphics != null) {
-                    long addrFrom = MemoryUtil.memAddress(buffer);
-                    long addrTo = MemoryUtil.memAddress(popupGraphics);
-                    MemoryUtil.memCopy(addrFrom + start, addrTo + start, end - start);
-                }
-
-                popupDrawn = true;
+            } else if (popupSize != null) {
+                // Handle popup painting (direct to popup buffer)
+                processPopupPaint(buffer, dirtyRects);
             }
+        } catch (Exception e) {
+            MCEF.INSTANCE.getLogger().error("Error during browser painting", e);
         } finally {
             // Restore pixel storage parameters
             GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, origUnpackRowLength[0]);
@@ -229,18 +201,135 @@ public class MCEFBrowser extends CefBrowserOsr {
             GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, origUnpackSkipRows[0]);
             GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, origPackAlignment[0]);
 
-            // Unbind texture
+
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
-            // Restore OpenGL state
+            // Restore
             GL11.glPopMatrix();
             GL11.glPopAttrib();
         }
     }
 
+    private void processPopup(ByteBuffer buffer, int width) {
+        if ((popupDrawn || showPopup) && popupSize != null) {
+            if (!showPopup) {
+                // Clear popup area when hiding
+                if (popupSize.x < width && popupSize.y < renderer.getCurrentHeight()) {
+                    GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, popupSize.x);
+                    GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, popupSize.y);
+
+                    int clearWidth = Math.min(popupSize.width, width - popupSize.x);
+                    int clearHeight = Math.min(popupSize.height, renderer.getCurrentHeight() - popupSize.y);
+
+                    if (clearWidth > 0 && clearHeight > 0) {
+                        renderer.onPaint(buffer, popupSize.x, popupSize.y, clearWidth, clearHeight);
+                    }
+                }
+                popupGraphics = null;
+                popupSize = null;
+                popupDrawn = false;
+            } else if (popupDrawn && popupGraphics != null) {
+                // Draw active popup
+                GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, popupSize.width);
+                GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, 0);
+                GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, 0);
+
+                if (popupSize.x >= 0 && popupSize.y >= 0 &&
+                        popupSize.x < renderer.getCurrentWidth() &&
+                        popupSize.y < renderer.getCurrentHeight()) {
+
+                    int renderWidth = Math.min(popupSize.width, renderer.getCurrentWidth() - popupSize.x);
+                    int renderHeight = Math.min(popupSize.height, renderer.getCurrentHeight() - popupSize.y);
+
+                    if (renderWidth > 0 && renderHeight > 0) {
+                        renderer.onPaint(popupGraphics, popupSize.x, popupSize.y, renderWidth, renderHeight);
+                    }
+                }
+            }
+        }
+    }
+
+    private void processPopupPaint(ByteBuffer buffer, Rectangle[] dirtyRects) {
+        if (renderer.getTextureID() == 0 || popupSize == null) return;
+
+        if (popupGraphics == null || popupGraphics.capacity() < (popupSize.width * popupSize.height * 4)) {
+            popupGraphics = BufferUtils.createByteBuffer(popupSize.width * popupSize.height * 4);
+        }
+
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, renderer.getTextureID());
+
+        for (Rectangle dirtyRect : dirtyRects) {
+            if (dirtyRect.width <= 0 || dirtyRect.height <= 0) continue;
+
+            // Calc source & destination positions in the buffers...
+            int startX = Math.max(0, dirtyRect.x);
+            int startY = Math.max(0, dirtyRect.y);
+            int endX = Math.min(popupSize.width, dirtyRect.x + dirtyRect.width);
+            int endY = Math.min(popupSize.height, dirtyRect.y + dirtyRect.height);
+
+            if (startX >= endX || startY >= endY) continue;
+
+            // popup must be within the texture bounds
+            if (popupSize.x + startX >= renderer.getCurrentWidth() ||
+                    popupSize.y + startY >= renderer.getCurrentHeight()) {
+                continue;
+            }
+
+            for (int y = startY; y < endY; y++) {
+                for (int x = startX; x < endX; x++) {
+                    int bufferPos = (y * popupSize.width + x) * 4;
+                    int popupPos = (y * popupSize.width + x) * 4;
+
+                    if (bufferPos >= 0 && bufferPos + 3 < buffer.capacity() &&
+                            popupPos >= 0 && popupPos + 3 < popupGraphics.capacity()) {
+                        popupGraphics.put(popupPos, buffer.get(bufferPos));     // B
+                        popupGraphics.put(popupPos + 1, buffer.get(bufferPos + 1)); // G
+                        popupGraphics.put(popupPos + 2, buffer.get(bufferPos + 2)); // R
+                        popupGraphics.put(popupPos + 3, buffer.get(bufferPos + 3)); // A
+                    }
+                }
+            }
+
+            GL11.glPixelStorei(GL11.GL_UNPACK_ROW_LENGTH, popupSize.width);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_PIXELS, startX);
+            GL11.glPixelStorei(GL11.GL_UNPACK_SKIP_ROWS, startY);
+
+            int renderWidth = endX - startX;
+            int renderHeight = endY - startY;
+
+            if (popupSize.x + startX + renderWidth > renderer.getCurrentWidth()) {
+                renderWidth = renderer.getCurrentWidth() - popupSize.x - startX;
+            }
+
+            if (popupSize.y + startY + renderHeight > renderer.getCurrentHeight()) {
+                renderHeight = renderer.getCurrentHeight() - popupSize.y - startY;
+            }
+
+            if (renderWidth > 0 && renderHeight > 0) {
+                renderer.onPaint(popupGraphics,
+                        popupSize.x + startX,
+                        popupSize.y + startY,
+                        renderWidth,
+                        renderHeight);
+            }
+        }
+
+        popupDrawn = true;
+    }
+
     public void resize(int width, int height) {
-        browser_rect_.setBounds(0, 0, width, height);
-        wasResized(width, height);
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+
+        if (browser_rect_.width != width || browser_rect_.height != height) {
+            browser_rect_.setBounds(0, 0, width, height);
+
+            lastWidth = 0;
+            lastHeight = 0;
+
+            wasResized(width, height);
+        }
     }
 
 
@@ -251,7 +340,7 @@ public class MCEFBrowser extends CefBrowserOsr {
             return;
         }
 
-        CefKeyEvent e = new CefKeyEvent(CefKeyEvent.KEY_PRESS, keyCode, (char) keyCode, modifiers);
+        CefKeyEvent e = new CefKeyEvent(CefKeyEvent.KEY_PRESS, keyCode, (char) keyCode, 0);
         e.scancode = scanCode;
         sendKeyEvent(e);
     }
@@ -297,7 +386,7 @@ public class MCEFBrowser extends CefBrowserOsr {
 
         // Double click handling
         var time = System.currentTimeMillis();
-        clicks = time - lastClickTime < 500 ? 2 : 1;
+        clicks = time - lastClickTime < 500 ? 2 : 1; //TODO: Uses system double click time setting
 
         sendMouseEvent(new CefMouseEvent(GLFW_PRESS, mouseX, mouseY, clicks, button, btnMask));
 
@@ -305,7 +394,7 @@ public class MCEFBrowser extends CefBrowserOsr {
         this.mouseButton = button;
     }
 
-    // TODO: it may be necessary to add modifiers here
+    // TODO:  Check why F Key goes fullscreen without FN modifier
     public void sendMouseRelease(int mouseX, int mouseY, int button) {
         button = swapButton(button);
 
@@ -329,7 +418,6 @@ public class MCEFBrowser extends CefBrowserOsr {
     }
 
 
-    //TODO: Check if this is still required or can also make our scrolling better
     public void sendMouseWheel(int mouseX, int mouseY, double amount, int i) {
         // macOS generally has a slow scroll speed that feels more natural with their magic mice / trackpads
         if (!isMacOs) {
@@ -412,7 +500,6 @@ public class MCEFBrowser extends CefBrowserOsr {
     public void setCursor(CefCursorType cursorType) {
         var windowHandle = Display.getHandle();
 
-        // We do not want to change the cursor state since Minecraft does this for us.
         if (cursorType == CefCursorType.NONE) return;
 
         org.lwjgl.glfw.GLFW.glfwSetCursor(windowHandle, MCEFGlfwCursorHelper.getGLFWCursorHandle(cursorType));
